@@ -12,14 +12,14 @@ mouseAntesX = 0
 mouseAntesY = 0
 
 hotkeyHoldRight = 'f4'
-hotkeyAttack = '\\'
+hotkeyAttack = 'f1'
 hotkeySalvar = 'alt+1'
 hotkeyBloodyWall = 'f12';
 hotkeyMeteoroNoose = 'f5';
 hotkeyViolentPhatom = '';
 
 
-bloodwalls = [0 , 25 , -25, 50, -50] 
+bloodwalls = [0 , 25 , -25] 
 
 def saveCurrentMousePosition():
     global mouseAntesX
@@ -42,16 +42,27 @@ def mouseAttackValidation():
 def hold_right_click():
     global holding
 
+    pyautogui.keyDown('alt')  # Pressiona e mantém Ctrl
+    
     while holding:
         pyautogui.mouseDown(button='right')
-        time.sleep(0.1)  # Small sleep to reduce CPU usage        
+        time.sleep(0.1)  # Small sleep to reduce CPU usage
+    
+    pyautogui.keyUp('alt')  # Solta Alt quando para  
 
 def Mage_hold_right_click():
     global autoClickOn
 
+    pyautogui.moveTo(mouseAttackX, mouseAttackY)
+    pyautogui.keyDown('alt')  # Pressiona e mantém Alt no início
+    
     while autoClickOn:
-        pyautogui.mouseDown(button='right')
-        time.sleep(0.1)  # Small sleep to reduce CPU usage        
+        pyautogui.press('f9')
+        #pyautogui.mouseDown(button='right')
+        pyautogui.click(button='right')  # Clica e solta automaticamente
+        time.sleep(1)  # Small sleep to reduce CPU usage
+    
+    pyautogui.keyUp('alt')  # Solta Alt quando para        
                 
 
 def toggle_right_click():
@@ -85,6 +96,7 @@ def autoClickToggle():
       pyautogui.press('backspace')          
       threading.Thread(target=autoClickRunning).start()
     else:        
+        print("\n\n\n\n\nParando de atacar")
         pyautogui.mouseUp(button='right')
          
   
@@ -112,13 +124,11 @@ def autoClickRunning():
                     time.sleep(2)     
                     
         
-        time.sleep(1)  
+          
         pyautogui.moveTo(mouseAttackX, mouseAttackY)
         threading.Thread(target=Mage_hold_right_click).start()
             
-            
         
-        pyautogui.moveTo(mouseAntesX, mouseAntesY)   
     else:
         autoClickOn = False
         print("Pressione a tecla: " + hotkeySalvar + " para setar uma posição inicial");    
