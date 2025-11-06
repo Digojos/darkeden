@@ -1,0 +1,31 @@
+{
+  "addresses": [
+    {
+      "address_str": "darkeden.exe+2FB1CC",
+      "data_type": "int32",
+      "description": "Y"
+    },
+    {
+      "address_str": "darkeden.exe+2FB1C8",
+      "data_type": "int32",
+      "description": "X"
+    },
+    {
+      "address_str": "darkeden.exe+357780",
+      "data_type": "int32",
+      "description": "HP MAX"
+    },
+    {
+      "address_str": "darkeden.exe+357778",
+      "data_type": "int32",
+      "description": "HP"
+    },
+    {
+      "address_str": "191A5061",
+      "data_type": "string",
+      "description": "Mapa"
+    }
+  ],
+  "timestamp": "2025-11-03 09:59:52",
+  "version": "1.0"
+}
