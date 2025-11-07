@@ -3,6 +3,7 @@ import threading
 import time
 import pyautogui
 import os
+import random
 
 holding = False
 autoClickOn = False
@@ -24,7 +25,7 @@ hotkeyMoveDown = 'down'
 hotkeyViolentPhatom = '';
 hotkeyLoot = '\\'
 
-
+opcoes = [1, 2, 3, 4]
 bloodwalls = [0 , 25 , -25] 
 
 def saveCurrentMousePosition():
@@ -55,6 +56,79 @@ def lootGround():
 def debug():
     print("Debugging")
 
+def move():
+    global autoClickOn
+    print("Movendo...")
+    escolha = random.choice(opcoes)
+    
+    # Definir quantas vezes mover para cada direção
+    repeticoes = {
+        1: 3,  # Direita: 6 vezes
+        2: 3,  # Esquerda: 6 vezes
+        3: 4,  # Cima: 10 vezes
+        4: 4   # Baixo: 12 vezes
+    }
+    
+    # Definir qual função chamar para cada escolha
+    movimentos = {
+        1: moveRight,
+        2: moveLeft,
+        3: moveUp,
+        4: moveDown
+    }
+    
+    # Nomes das direções
+    nomes_direcoes = {
+        1: "➡️ Direita",
+        2: "⬅️ Esquerda",
+        3: "⬆️ Cima",
+        4: "⬇️ Baixo"
+    }
+    
+    # Executar o movimento escolhido o número de vezes definido
+    funcao_movimento = movimentos[escolha]
+    quantidade = repeticoes[escolha]
+    direcao = nomes_direcoes[escolha]
+    
+    print(f"Movendo para {direcao} por {quantidade} vezes.")
+    for i in range(quantidade):
+        if autoClickOn:
+            funcao_movimento()
+            time.sleep(0.2)
+
+def attack():
+    global autoClickOn
+    tempo_maximo = 40  # segundos
+    tempo_inicio = time.time()
+    print("Iniciando ataque por até " + str(tempo_maximo) + " segundos...")
+    pyautogui.moveTo(mouseAttackX, mouseAttackY)
+    pyautogui.keyDown('alt')  # Pressiona e mantém Alt no início
+    
+    while autoClickOn:
+        # Calcular tempo decorrido
+        tempo_decorrido = time.time() - tempo_inicio
+        
+        # Verificar se já passou o tempo máximo
+        if tempo_decorrido >= tempo_maximo:
+            print(f"⏱️ Tempo limite de {tempo_maximo}s atingido!")
+            break
+        
+        pyautogui.press('f11')
+        #pyautogui.mouseDown(button='right')
+        pyautogui.click(button='right')  # Clica e solta automaticamente
+        time.sleep(1)  # Small sleep to reduce CPU usage
+    
+    pyautogui.keyUp('alt')  # Solta Alt quando para
+
+def init_bot():
+    global autoClickOn
+
+    while autoClickOn:
+        if autoClickOn:
+            attack()
+        if autoClickOn:    
+            move()
+
 def hold_right_click():
     global holding
 
@@ -65,6 +139,18 @@ def hold_right_click():
         time.sleep(0.1)  # Small sleep to reduce CPU usage
     
     pyautogui.keyUp('alt')  # Solta Alt quando para  
+def backToBeginners():
+    pyautogui.keyDown('ctrlright') 
+    pyautogui.leftClick(843, 236)
+    time.sleep(0.5)
+    pyautogui.keyUp('ctrlright')
+    pyautogui.leftClick(540, 559)
+    time.sleep(0.5)
+    pyautogui.leftClick(597, 635)
+    time.sleep(1.5)
+    for i in range(6):
+        moveInicioBegginers()
+        time.sleep(0.2)
 
 def Mage_hold_right_click():
     global autoClickOn
@@ -127,23 +213,9 @@ def autoClickRunning():
     global mouseAntesY
     
     if mouseAttackValidation():
-        pyautogui.press('f12')
         saveCurrentMousePosition()       
         pyautogui.moveTo(mouseAttackX, mouseAttackY)
-        time.sleep(0.5)
-        for wall in bloodwalls: 
-           
-            if autoClickOn:
-                pyautogui.keyDown('alt')            
-                pyautogui.rightClick(mouseAttackX,mouseAttackY + wall)
-                pyautogui.keyUp('alt')
-                if wall != -50:
-                    time.sleep(2)     
-                    
-        
-          
-        pyautogui.moveTo(mouseAttackX, mouseAttackY)
-        threading.Thread(target=Mage_hold_right_click).start()
+        threading.Thread(target=init_bot).start()
             
         
     else:
@@ -158,11 +230,22 @@ def set_mouse_attack():
     mouseAttackY = pyautogui.position().y
     print("Posição salva com sucesso")
 
+def moveInicioBegginers():
+    offset = 120
+    global mouseAttackX
+    global mouseAttackY
+    print("Movendo inicio beginners...")
+    pyautogui.press('f7') #usar skill f7 (rapid glinding)
+    time.sleep(0.5)
+    pyautogui.keyDown('alt')
+    pyautogui.rightClick(mouseAttackX + offset, mouseAttackY + offset)
+    pyautogui.keyUp('alt')  # Solta Alt quando para  
+
 def moveRight():
     offset = 250
     global mouseAttackX
     global mouseAttackY
-
+    print("Movendo para a direita...")
     pyautogui.press('f7') #usar skill f7 (rapid glinding)
     time.sleep(0.5)
     pyautogui.keyDown('alt')
@@ -173,7 +256,7 @@ def moveLeft():
     offset = -250
     global mouseAttackX
     global mouseAttackY
-
+    print("Movendo para a esquerda...")
     pyautogui.press('f7') #usar skill f7 (rapid glinding)
     time.sleep(0.5)
     pyautogui.keyDown('alt')
@@ -184,7 +267,7 @@ def moveUp():
     offset = -130
     global mouseAttackX
     global mouseAttackY
-
+    print("Movendo para cima...")
     pyautogui.press('f7') #usar skill f7 (rapid glinding)
     time.sleep(0.5)
     pyautogui.keyDown('alt')
@@ -195,7 +278,7 @@ def moveDown():
     offset = 130
     global mouseAttackX
     global mouseAttackY
-
+    print("Movendo para baixo...")
     pyautogui.press('f7') #usar skill f7 (rapid glinding)
     time.sleep(0.5)
     pyautogui.keyDown('alt')
@@ -222,12 +305,8 @@ if __name__ == "__main__":
     # Set up the hotkey
     keyboard.add_hotkey(hotkeyHoldRight, toggle_right_click)
     keyboard.add_hotkey(hotkeySalvar, set_mouse_attack)  
-    keyboard.add_hotkey(hotkeyMoveRight, moveRight)
-    keyboard.add_hotkey(hotkeyMoveLeft, moveLeft)
-    keyboard.add_hotkey(hotkeyMoveUp, moveUp)
-    keyboard.add_hotkey(hotkeyMoveDown, moveDown)
-    keyboard.add_hotkey(hotkeyAttack, autoClickToggle) 
-    keyboard.add_hotkey(hotkeyLoot, lootGround)
+    keyboard.add_hotkey(hotkeyAttack, autoClickToggle)
+    keyboard.add_hotkey(hotkeyLoot, backToBeginners)
     print("Tecla para atacar mouse direito (Segurar): " + hotkeyHoldRight)
     print("Tecla para combo mago: " + hotkeyAttack + " NECESSÁRIO MARCAR POSIÇÃO EM BAIXO DO CHAR")
     print("Tecla para setar posição: " + hotkeySalvar)

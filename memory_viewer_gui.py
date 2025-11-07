@@ -11,6 +11,8 @@ import struct
 import threading
 import time
 import json
+import pymem
+import pymem.process
 
 # Importar a classe MemoryReader  
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -209,6 +211,14 @@ class MemoryViewerGUI(QMainWindow):
         self.convert_btn.clicked.connect(self.convert_absolute_to_offset)
         self.convert_btn.setStyleSheet('QPushButton { background-color: #44aa88; }')
         memory_buttons.addWidget(self.convert_btn)
+        
+        # Novo botão para converter TODOS os endereços absolutos automaticamente
+        self.convert_all_btn = QPushButton('🔄 Converter Todos Absolutos')
+        self.convert_all_btn.clicked.connect(self.convert_all_absolute_addresses_auto)
+        self.convert_all_btn.setEnabled(False)
+        self.convert_all_btn.setToolTip('Converte automaticamente todos os endereços absolutos salvos para módulo+offset')
+        self.convert_all_btn.setStyleSheet('QPushButton { background-color: #aa44aa; }')
+        memory_buttons.addWidget(self.convert_all_btn)
         
         # Novo botão para listar módulos
         self.modules_btn = QPushButton('📋 Listar Módulos')
@@ -604,13 +614,40 @@ class MemoryViewerGUI(QMainWindow):
                 self.add_log(f"🔄 Campo atualizado para: {module_format}")
                 return
             
-            # Se não encontrou, mostrar informações de debug
+            # Se não encontrou, mostrar informações de debug detalhadas
             self.add_log("⚠️ Endereço não pertence a nenhum módulo conhecido")
+            self.add_log("")
+            self.add_log("📋 Análise detalhada:")
+            
+            # Listar os 3 primeiros módulos para referência
+            self.add_log(f"📦 Primeiros módulos do processo:")
+            pm_modules = pymem.Pymem()
+            pm_modules.open_process_from_id(self.memory_reader.process_id)
+            modules_list = list(pm_modules.list_modules())[:3]
+            for i, mod in enumerate(modules_list, 1):
+                self.add_log(f"   {i}. {mod.name}: 0x{mod.lpBaseOfDll:08X} - 0x{mod.lpBaseOfDll + mod.SizeOfImage:08X}")
+            
+            self.add_log("")
             self.add_log("📋 Possíveis causas:")
-            self.add_log("   • Endereço inválido")
-            self.add_log("   • Memória alocada dinamicamente")
-            self.add_log("   • Região de heap/stack")
-            self.add_log("💡 Mantenha o endereço absoluto ou verifique se está correto")
+            self.add_log("   1️⃣ Endereço em HEAP - memória alocada dinamicamente")
+            self.add_log("   2️⃣ Endereço em STACK - dados temporários da execução")
+            self.add_log("   3️⃣ Ponteiro multi-level - precisa usar Pointer Scan")
+            self.add_log("   4️⃣ Endereço de outro processo (verificar se conectou ao correto)")
+            self.add_log("")
+            self.add_log("💡 SOLUÇÃO:")
+            self.add_log("   🔍 Use o Cheat Engine:")
+            self.add_log("   1. Encontre o endereço que quer (o valor que muda)")
+            self.add_log("   2. Clique direito → 'Pointer scan for this address'")
+            self.add_log("   3. Aguarde o scan terminar")
+            self.add_log("   4. Reinicie o jogo e faça 'Pointer scan again'")
+            self.add_log("   5. Repita até encontrar poucos ponteiros (< 100)")
+            self.add_log("   6. O ponteiro terá formato: [[darkeden.exe+X]+Y]+Z")
+            self.add_log("")
+            self.add_log("💡 Enquanto isso, mantenha o endereço absoluto no JSON")
+            self.add_log("   (mas será necessário atualizar manualmente a cada restart)")
+            
+            # Tentar encontrar ponteiros automaticamente
+            self.try_find_pointer_to_address(target_address)
             
         except ValueError as e:
             self.add_log(f"❌ Endereço inválido: {str(e)}")
@@ -778,6 +815,7 @@ class MemoryViewerGUI(QMainWindow):
                     self.read_once_btn.setEnabled(True)
                     self.start_monitor_btn.setEnabled(True)
                     self.add_address_btn.setEnabled(True)
+                    self.convert_all_btn.setEnabled(True)  # Habilitar conversão automática
                     
                     # Recalcular endereços carregados
                     self.recalculate_addresses()
@@ -1323,6 +1361,353 @@ class MemoryViewerGUI(QMainWindow):
         if self.memory_reader:
             self.memory_reader.close()
         event.accept()
+    
+    def calculate_offset_from_absolute(self, absolute_address_str):
+        """
+        Calcula o offset de um endereço absoluto baseado nos módulos carregados
+        Usa pymem para listar todos os módulos e encontrar onde o endereço está
+        
+        Args:
+            absolute_address_str: String do endereço absoluto (ex: "191A5061" ou "0x191A5061")
+        
+        Returns:
+            (success, new_address_format, module_name, offset, base_address)
+            Exemplo: (True, "darkeden.exe+A5061", "darkeden.exe", 0xA5061, 0x19100000)
+        """
+        try:
+            # Converter endereço string para inteiro
+            if absolute_address_str.startswith('0x'):
+                target_address = int(absolute_address_str, 16)
+            else:
+                target_address = int(absolute_address_str, 16)
+            
+            self.add_log(f"")
+            self.add_log(f"🔍 === CALCULANDO OFFSET PARA ENDEREÇO ABSOLUTO ===")
+            self.add_log(f"📍 Endereço alvo: 0x{target_address:08X}")
+            
+            # Verificar se está conectado a um processo
+            if not self.memory_reader or not self.memory_reader.process_id:
+                self.add_log("❌ Conecte-se a um processo primeiro!")
+                return False, None, None, None, None
+            
+            pid = self.memory_reader.process_id
+            self.add_log(f"🎯 Processo conectado: PID {pid}")
+            
+            # Abrir processo com pymem
+            pm = pymem.Pymem()
+            pm.open_process_from_id(pid)
+            
+            # Listar todos os módulos do processo
+            modules = list(pm.list_modules())
+            self.add_log(f"📚 Verificando {len(modules)} módulos carregados no processo...")
+            self.add_log("")
+            
+            # Procurar em qual módulo o endereço está
+            for module in modules:
+                base = module.lpBaseOfDll
+                size = module.SizeOfImage
+                module_name = module.name
+                end_address = base + size
+                
+                # Verificar se o endereço está dentro deste módulo
+                if base <= target_address < end_address:
+                    offset = target_address - base
+                    
+                    self.add_log(f"✅ ═══════════════════════════════════════")
+                    self.add_log(f"✅ ENDEREÇO ENCONTRADO!")
+                    self.add_log(f"✅ ═══════════════════════════════════════")
+                    self.add_log(f"")
+                    self.add_log(f"📦 Módulo: {module_name}")
+                    self.add_log(f"📍 Base do módulo: 0x{base:08X}")
+                    self.add_log(f"📏 Tamanho do módulo: 0x{size:08X} ({size / 1024 / 1024:.2f} MB)")
+                    self.add_log(f"🎯 Endereço final: 0x{end_address:08X}")
+                    self.add_log(f"")
+                    self.add_log(f"📐 Offset calculado: +0x{offset:X}")
+                    self.add_log(f"")
+                    self.add_log(f"🔢 FÓRMULA:")
+                    self.add_log(f"   {module_name} + 0x{offset:X} = 0x{target_address:08X}")
+                    self.add_log(f"")
+                    self.add_log(f"💡 Use no Memory Viewer:")
+                    self.add_log(f"   {module_name}+{offset:X}")
+                    self.add_log(f"")
+                    
+                    # Formato final
+                    new_format = f"{module_name}+{offset:X}"
+                    return True, new_format, module_name, offset, base
+            
+            # Se não encontrou em nenhum módulo
+            self.add_log(f"")
+            self.add_log(f"⚠️ ═══════════════════════════════════════")
+            self.add_log(f"⚠️ ENDEREÇO NÃO ENCONTRADO EM NENHUM MÓDULO!")
+            self.add_log(f"⚠️ ═══════════════════════════════════════")
+            self.add_log(f"")
+            self.add_log(f"📋 Possíveis causas:")
+            self.add_log(f"   1️⃣ Memória alocada dinamicamente (heap)")
+            self.add_log(f"   2️⃣ Stack do processo")
+            self.add_log(f"   3️⃣ Ponteiro multi-level")
+            self.add_log(f"   4️⃣ Endereço inválido")
+            self.add_log(f"")
+            
+            # Mostrar módulos mais próximos para debug
+            self.show_nearby_modules(modules, target_address)
+            
+            return False, None, None, None, None
+            
+        except Exception as e:
+            self.add_log(f"❌ Erro ao calcular offset: {str(e)}")
+            import traceback
+            self.add_log(f"🔍 Stack trace:")
+            for line in traceback.format_exc().split('\n'):
+                if line.strip():
+                    self.add_log(f"   {line}")
+            return False, None, None, None, None
+    
+    def show_nearby_modules(self, modules, target_address):
+        """Mostra os 5 módulos mais próximos ao endereço alvo para debug"""
+        self.add_log(f"🔍 Módulos mais próximos ao endereço 0x{target_address:08X}:")
+        self.add_log(f"")
+        
+        nearby = []
+        for module in modules:
+            base = module.lpBaseOfDll
+            size = module.SizeOfImage
+            end = base + size
+            
+            # Calcular distância
+            if target_address < base:
+                distance = base - target_address
+                position = "antes do módulo"
+            elif target_address >= end:
+                distance = target_address - end
+                position = "depois do módulo"
+            else:
+                distance = 0
+                position = "DENTRO do módulo (não deveria chegar aqui!)"
+            
+            nearby.append({
+                'name': module.name,
+                'base': base,
+                'end': end,
+                'size': size,
+                'distance': distance,
+                'position': position
+            })
+        
+        # Ordenar por distância (mais próximo primeiro)
+        nearby.sort(key=lambda x: x['distance'])
+        
+        # Mostrar os 5 mais próximos
+        for i, item in enumerate(nearby[:5], 1):
+            size_mb = item['size'] / 1024 / 1024
+            self.add_log(f"   {i}. {item['name']}")
+            self.add_log(f"      Range: 0x{item['base']:08X} - 0x{item['end']:08X} ({size_mb:.2f} MB)")
+            self.add_log(f"      Status: {item['position']}")
+            if item['distance'] > 0:
+                distance_kb = item['distance'] / 1024
+                self.add_log(f"      Distância: 0x{item['distance']:X} bytes ({distance_kb:.2f} KB)")
+            self.add_log("")
+    
+    def convert_all_absolute_addresses_auto(self):
+        """
+        Converte TODOS os endereços absolutos salvos automaticamente
+        Esta função é chamada pelo botão "🔄 Converter Todos Absolutos"
+        """
+        if not self.memory_reader or not self.memory_reader.process_id:
+            self.add_log("⚠️ Conecte ao processo primeiro!")
+            return
+        
+        self.add_log("")
+        self.add_log("=" * 60)
+        self.add_log("🔄 === CONVERSÃO AUTOMÁTICA DE ENDEREÇOS ABSOLUTOS ===")
+        self.add_log("=" * 60)
+        self.add_log("")
+        
+        converted_count = 0
+        failed_count = 0
+        failed_addresses = []
+        
+        for key, addr_info in list(self.monitored_addresses.items()):
+            address_str = addr_info['address_str']
+            
+            # Verificar se é endereço absoluto (sem '+' e só números/hex)
+            is_absolute = ('+' not in address_str and 
+                          not address_str.lower().startswith('base') and
+                          all(c in '0123456789ABCDEFabcdefx' for c in address_str))
+            
+            if is_absolute:
+                self.add_log(f"🎯 Processando: {addr_info['description']}")
+                self.add_log(f"   Endereço original: {address_str}")
+                
+                success, new_format, module_name, offset, base = self.calculate_offset_from_absolute(address_str)
+                
+                if success:
+                    # Atualizar no dicionário
+                    old_key = key
+                    addr_info['address_str'] = new_format
+                    
+                    # Recalcular endereço usando parse_address
+                    try:
+                        new_address = self.parse_address(new_format)
+                        addr_info['address'] = new_address
+                        addr_info['address_calculated'] = f"0x{new_address:08X}"
+                    except:
+                        pass
+                    
+                    # Criar nova chave
+                    new_key = f"{new_format}_{addr_info['data_type']}"
+                    
+                    # Atualizar dicionário
+                    if new_key != old_key:
+                        self.monitored_addresses[new_key] = self.monitored_addresses.pop(old_key)
+                    
+                    # Atualizar na tabela
+                    for row in range(self.values_table.rowCount()):
+                        if (self.values_table.item(row, 0) and 
+                            self.values_table.item(row, 0).text() == address_str):
+                            self.values_table.setItem(row, 0, QTableWidgetItem(new_format))
+                            self.add_log(f"   ✅ Tabela atualizada: {new_format}")
+                            break
+                    
+                    converted_count += 1
+                    self.add_log(f"   ✅ CONVERSÃO CONCLUÍDA COM SUCESSO!")
+                else:
+                    failed_count += 1
+                    failed_addresses.append({
+                        'description': addr_info['description'],
+                        'address': address_str
+                    })
+                    self.add_log(f"   ❌ Não foi possível converter")
+                
+                self.add_log("")
+        
+        # Resumo final
+        self.add_log("=" * 60)
+        self.add_log(f"📊 === RESUMO DA CONVERSÃO ===")
+        self.add_log("=" * 60)
+        self.add_log(f"✅ Convertidos com sucesso: {converted_count}")
+        self.add_log(f"❌ Não convertidos: {failed_count}")
+        self.add_log(f"📋 Total de endereços verificados: {converted_count + failed_count}")
+        self.add_log("=" * 60)
+        
+        if failed_addresses:
+            self.add_log(f"")
+            self.add_log(f"⚠️ Endereços que permaneceram absolutos:")
+            for item in failed_addresses:
+                self.add_log(f"   • {item['description']}: {item['address']}")
+            
+            self.add_log(f"")
+            self.add_log(f"💡 DICA PARA ENDEREÇOS DINÂMICOS:")
+            self.add_log(f"   1. Abra o Cheat Engine")
+            self.add_log(f"   2. Encontre o endereço que muda")
+            self.add_log(f"   3. Clique com botão direito → Pointer scan")
+            self.add_log(f"   4. Encontre o caminho estático do ponteiro")
+            self.add_log(f"   5. Exemplo: [[darkeden.exe+2FB000]+10]+8")
+            self.add_log(f"")
+        
+        # Salvar alterações no JSON
+        if converted_count > 0:
+            self.save_addresses()
+            self.add_log(f"")
+            self.add_log(f"💾 Alterações salvas automaticamente em '{self.addresses_file}'")
+        
+        self.add_log("")
+        self.add_log("=== FIM DA CONVERSÃO ===")
+        self.add_log("")
+    
+    def try_find_pointer_to_address(self, target_address):
+        """
+        Tenta encontrar ponteiros que apontam para um endereço dinâmico
+        Faz uma busca básica na região .data dos módulos
+        """
+        try:
+            self.add_log("")
+            self.add_log("🔍 === BUSCANDO PONTEIROS PARA O ENDEREÇO ===")
+            self.add_log(f"🎯 Alvo: 0x{target_address:08X}")
+            self.add_log("")
+            
+            pm = pymem.Pymem()
+            pm.open_process_from_id(self.memory_reader.process_id)
+            modules = list(pm.list_modules())
+            
+            found_pointers = []
+            
+            # Procurar nos primeiros 5 módulos principais
+            for module in modules[:5]:
+                base = module.lpBaseOfDll
+                size = min(module.SizeOfImage, 0x100000)  # Limitar a 1MB para não travar
+                module_name = module.name
+                
+                self.add_log(f"🔍 Escaneando: {module_name}")
+                
+                try:
+                    # Ler região de memória do módulo
+                    data = pm.read_bytes(base, size)
+                    
+                    # Procurar por valores que sejam próximos ao endereço alvo
+                    import struct
+                    tolerance = 0x1000  # Tolerância de 4KB
+                    
+                    for i in range(0, len(data) - 4, 4):
+                        try:
+                            pointer_value = struct.unpack('<I', data[i:i+4])[0]
+                            
+                            # Verificar se aponta para próximo do endereço alvo
+                            if abs(pointer_value - target_address) < tolerance:
+                                pointer_address = base + i
+                                offset_from_base = i
+                                offset_to_target = target_address - pointer_value
+                                
+                                found_pointers.append({
+                                    'module': module_name,
+                                    'address': pointer_address,
+                                    'offset_from_base': offset_from_base,
+                                    'points_to': pointer_value,
+                                    'offset_to_target': offset_to_target
+                                })
+                        except:
+                            continue
+                    
+                except Exception as e:
+                    self.add_log(f"   ⚠️ Erro ao escanear {module_name}: {e}")
+                    continue
+            
+            if found_pointers:
+                self.add_log("")
+                self.add_log(f"✅ Encontrados {len(found_pointers)} ponteiros potenciais!")
+                self.add_log("")
+                
+                for i, ptr in enumerate(found_pointers[:10], 1):  # Mostrar até 10
+                    self.add_log(f"{i}. 📍 {ptr['module']}+{ptr['offset_from_base']:X}")
+                    self.add_log(f"   Endereço: 0x{ptr['address']:08X}")
+                    self.add_log(f"   Aponta para: 0x{ptr['points_to']:08X}")
+                    if ptr['offset_to_target'] != 0:
+                        self.add_log(f"   Offset adicional: +0x{ptr['offset_to_target']:X}")
+                    self.add_log(f"   💡 Teste no Cheat Engine: [{ptr['module']}+{ptr['offset_from_base']:X}]")
+                    if ptr['offset_to_target'] != 0:
+                        self.add_log(f"      Com offset: [[{ptr['module']}+{ptr['offset_from_base']:X}]+{ptr['offset_to_target']:X}]")
+                    self.add_log("")
+                
+                if len(found_pointers) > 10:
+                    self.add_log(f"... e mais {len(found_pointers) - 10} ponteiros")
+                
+                self.add_log("💡 Use o Cheat Engine para validar estes ponteiros!")
+                self.add_log("   1. Adicione endereço manualmente")
+                self.add_log("   2. Use o formato mostrado acima")
+                self.add_log("   3. Reinicie o jogo para testar se o ponteiro é estático")
+            else:
+                self.add_log("")
+                self.add_log("❌ Nenhum ponteiro direto encontrado")
+                self.add_log("💡 Isso significa que é um ponteiro multi-level (2+ níveis)")
+                self.add_log("   Use o Pointer Scan do Cheat Engine para encontrar")
+            
+            self.add_log("")
+            return found_pointers
+            
+        except Exception as e:
+            self.add_log(f"❌ Erro na busca de ponteiros: {e}")
+            import traceback
+            self.add_log(traceback.format_exc())
+            return []
 
 def main():
     app = QApplication(sys.argv)

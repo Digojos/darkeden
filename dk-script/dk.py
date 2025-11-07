@@ -10,19 +10,13 @@ mouseAttackX = 0
 mouseAttackY = 0
 mouseAntesX = 0
 mouseAntesY = 0
-lootMouseX = 1262
-lootMouseY = 194
+
 hotkeyHoldRight = 'f4'
-hotkeyAttack = 'f3'
+hotkeyAttack = 'f1'
 hotkeySalvar = 'alt+1'
-hotkeyBloodyWall = 'f12'
-hotkeyMeteoroNoose = 'f5'
-hotkeyMoveRight = 'right'
-hotkeyMoveLeft = 'left'
-hotkeyMoveUp = 'up'
-hotkeyMoveDown = 'down'
+hotkeyBloodyWall = 'f12';
+hotkeyMeteoroNoose = 'f5';
 hotkeyViolentPhatom = '';
-hotkeyLoot = '\\'
 
 
 bloodwalls = [0 , 25 , -25] 
@@ -44,27 +38,13 @@ def mouseAttackValidation():
     
     return False
 
-def lootGround():
-    saveCurrentMousePosition()
-    pyautogui.keyDown('alt')
-    time.sleep(0.1)
-    pyautogui.leftClick(lootMouseX, lootMouseY)
-    pyautogui.keyUp('alt')
-    pyautogui.press('backspace')
-    pyautogui.moveTo(mouseAntesX, mouseAntesY)
-def debug():
-    print("Debugging")
 
 def hold_right_click():
     global holding
 
-    pyautogui.keyDown('alt')  # Pressiona e mantém Ctrl
-    
     while holding:
         pyautogui.mouseDown(button='right')
         time.sleep(0.1)  # Small sleep to reduce CPU usage
-    
-    pyautogui.keyUp('alt')  # Solta Alt quando para  
 
 def Mage_hold_right_click():
     global autoClickOn
@@ -73,7 +53,7 @@ def Mage_hold_right_click():
     pyautogui.keyDown('alt')  # Pressiona e mantém Alt no início
     
     while autoClickOn:
-        pyautogui.press('f11')
+        pyautogui.press('f9')
         #pyautogui.mouseDown(button='right')
         pyautogui.click(button='right')  # Clica e solta automaticamente
         time.sleep(1)  # Small sleep to reduce CPU usage
@@ -113,8 +93,7 @@ def autoClickToggle():
       threading.Thread(target=autoClickRunning).start()
     else:        
         print("\n\n\n\n\nParando de atacar")
-        os.system('cls')
-        #pyautogui.mouseUp(button='right')
+        pyautogui.mouseUp(button='right')
          
   
    
@@ -156,52 +135,8 @@ def set_mouse_attack():
     pyautogui.press('backspace')
     mouseAttackX = pyautogui.position().x
     mouseAttackY = pyautogui.position().y
-    print("Posição salva com sucesso")
-
-def moveRight():
-    offset = 250
-    global mouseAttackX
-    global mouseAttackY
-
-    pyautogui.press('f7') #usar skill f7 (rapid glinding)
-    time.sleep(0.5)
-    pyautogui.keyDown('alt')
-    pyautogui.rightClick(mouseAttackX + offset, mouseAttackY)
-    pyautogui.keyUp('alt')  # Solta Alt quando para  
-
-def moveLeft():
-    offset = -250
-    global mouseAttackX
-    global mouseAttackY
-
-    pyautogui.press('f7') #usar skill f7 (rapid glinding)
-    time.sleep(0.5)
-    pyautogui.keyDown('alt')
-    pyautogui.rightClick(mouseAttackX + offset, mouseAttackY)
-    pyautogui.keyUp('alt')  # Solta Alt quando para  
-
-def moveUp():
-    offset = -130
-    global mouseAttackX
-    global mouseAttackY
-
-    pyautogui.press('f7') #usar skill f7 (rapid glinding)
-    time.sleep(0.5)
-    pyautogui.keyDown('alt')
-    pyautogui.rightClick(mouseAttackX , mouseAttackY + offset)
-    pyautogui.keyUp('alt')  # Solta Alt quando para  
-
-def moveDown():
-    offset = 130
-    global mouseAttackX
-    global mouseAttackY
-
-    pyautogui.press('f7') #usar skill f7 (rapid glinding)
-    time.sleep(0.5)
-    pyautogui.keyDown('alt')
-    pyautogui.rightClick(mouseAttackX , mouseAttackY + offset)
-    pyautogui.keyUp('alt')  # Solta Alt quando para
-
+    print("Posição salva com sucesso");
+    
 def printar_pos():
     print(pyautogui.position())    
     pyautogui.press('capslock')
@@ -222,12 +157,8 @@ if __name__ == "__main__":
     # Set up the hotkey
     keyboard.add_hotkey(hotkeyHoldRight, toggle_right_click)
     keyboard.add_hotkey(hotkeySalvar, set_mouse_attack)  
-    keyboard.add_hotkey(hotkeyMoveRight, moveRight)
-    keyboard.add_hotkey(hotkeyMoveLeft, moveLeft)
-    keyboard.add_hotkey(hotkeyMoveUp, moveUp)
-    keyboard.add_hotkey(hotkeyMoveDown, moveDown)
+      
     keyboard.add_hotkey(hotkeyAttack, autoClickToggle) 
-    keyboard.add_hotkey(hotkeyLoot, lootGround)
     print("Tecla para atacar mouse direito (Segurar): " + hotkeyHoldRight)
     print("Tecla para combo mago: " + hotkeyAttack + " NECESSÁRIO MARCAR POSIÇÃO EM BAIXO DO CHAR")
     print("Tecla para setar posição: " + hotkeySalvar)

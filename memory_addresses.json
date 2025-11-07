@@ -21,11 +21,11 @@
       "description": "HP"
     },
     {
-      "address_str": "191A5061",
+      "address_str": "0x18F00F71",
       "data_type": "string",
       "description": "Mapa"
     }
   ],
-  "timestamp": "2025-11-03 09:59:52",
+  "timestamp": "2025-11-07 00:04:18",
   "version": "1.0"
 }
