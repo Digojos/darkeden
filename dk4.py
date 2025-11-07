@@ -96,25 +96,25 @@ def move():
     opcoes_disponiveis = []
     
     # Verificar se pode ir para DIREITA (1)
-    if pos_x_antes is None or pos_x_antes <= 110:
+    if pos_x_antes is None or pos_x_antes <= 90:
         opcoes_disponiveis.append(1)
     else:
         print("⚠️ Limite direito atingido! X = " + str(pos_x_antes))
     
     # Verificar se pode ir para ESQUERDA (2)
-    if pos_x_antes is None or pos_x_antes >= 20:
+    if pos_x_antes is None or pos_x_antes >= 40:
         opcoes_disponiveis.append(2)
     else:
         print("⚠️ Limite esquerdo atingido! X = " + str(pos_x_antes))
     
     # Verificar se pode ir para CIMA (3)
-    if pos_y_antes is None or pos_y_antes >= 20:
+    if pos_y_antes is None or pos_y_antes >= 40:
         opcoes_disponiveis.append(3)
     else:
         print("⚠️ Limite superior atingido! Y = " + str(pos_y_antes))
     
     # Verificar se pode ir para BAIXO (4)
-    if pos_y_antes is None or pos_y_antes <= 230:
+    if pos_y_antes is None or pos_y_antes <= 210:
         opcoes_disponiveis.append(4)
     else:
         print("⚠️ Limite inferior atingido! Y = " + str(pos_y_antes))
@@ -176,7 +176,7 @@ def move():
                 time.sleep(0.2)
         
         # === AGUARDAR ESTABILIZAÇÃO ===
-        time.sleep(1)
+        time.sleep(1.2)
         
         # === VERIFICAR SE MOVEU ===
         pos_x_depois = get_memory_value("X")
@@ -230,7 +230,7 @@ def attack():
     while autoClickOn:
         # Calcular tempo decorrido
         tempo_decorrido = time.time() - tempo_inicio
-        
+        checks()
         # Verificar se já passou o tempo máximo
         if tempo_decorrido >= tempo_maximo:
             print(f"⏱️ Tempo limite de {tempo_maximo}s atingido!")
@@ -400,7 +400,10 @@ def moveRight():
     time.sleep(0.5)
     pyautogui.keyDown('alt')
     pyautogui.rightClick(mouseAttackX + offset, mouseAttackY)
-    pyautogui.keyUp('alt')  # Solta Alt quando para  
+    time.sleep(0.5)  
+    pyautogui.leftClick(mouseAttackX + (offset * 2), mouseAttackY)
+    time.sleep(2)
+    pyautogui.keyUp('alt')
 
 def moveLeft():
     offset = -250
@@ -411,7 +414,11 @@ def moveLeft():
     time.sleep(0.5)
     pyautogui.keyDown('alt')
     pyautogui.rightClick(mouseAttackX + offset, mouseAttackY)
-    pyautogui.keyUp('alt')  # Solta Alt quando para  
+    time.sleep(0.5)  # Solta Alt quando para  
+    pyautogui.leftClick(mouseAttackX + (offset * 2), mouseAttackY)
+    time.sleep(2)
+    pyautogui.keyUp('alt')
+    
 
 def moveUp():
     offset = -130
@@ -422,8 +429,10 @@ def moveUp():
     time.sleep(0.5)
     pyautogui.keyDown('alt')
     pyautogui.rightClick(mouseAttackX , mouseAttackY + offset)
-    pyautogui.keyUp('alt')  # Solta Alt quando para  
-
+    time.sleep(0.5)  # Solta Alt quando para  
+    pyautogui.leftClick(mouseAttackX , mouseAttackY + (offset * 2))
+    time.sleep(2)
+    pyautogui.keyUp('alt')
 def moveDown():
     offset = 130
     global mouseAttackX
@@ -433,6 +442,9 @@ def moveDown():
     time.sleep(0.5)
     pyautogui.keyDown('alt')
     pyautogui.rightClick(mouseAttackX , mouseAttackY + offset)
+    time.sleep(0.5)
+    pyautogui.leftClick(mouseAttackX , mouseAttackY + (offset * 2))
+    time.sleep(2)
     pyautogui.keyUp('alt')  # Solta Alt quando para
 
 def printar_pos():
@@ -620,7 +632,7 @@ def monitoring_loop():
             value = read_value_by_type(address, data_type)
             memory_values[description] = value
         
-        time.sleep(0.5)  # Atualiza a cada 100ms
+        time.sleep(0.2)  # Atualiza a cada 100ms
 
 def show_memory_values():
     """Exibe os valores atuais da memória (acionado por F6)"""
