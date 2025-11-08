@@ -18,7 +18,7 @@ spec = importlib.util.spec_from_file_location("read_memory", "read-memory.py")
 read_memory_module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(read_memory_module)
 MemoryReader = read_memory_module.MemoryReader
-
+#char auxiliar pra sc deve ficar em perona NE x = 37, y = 124
 holding = False
 autoClickOn = False
 mouseAttackX = 0
@@ -41,9 +41,15 @@ hotkeyMoveDown = 'down'
 hotkeyViolentPhatom = '';
 hotkeyLoot = '\\'
 
+# === HOTKEYS DE MONITORAMENTO DE MEMÓRIA ===
+hotkeyShowMemory = 'ctrl+alt+m'          # Mostrar valores de memória
+hotkeyToggleMonitoring = 'ctrl+alt+t'    # Ativar/Desativar monitoramento
+hotkeyDebugXY = 'ctrl+alt+d'             # Debug detalhado X/Y
+hotkeyReconnectProcess = 'ctrl+alt+r'    # Reconectar a outro processo
+
 opcoes = [1, 2, 3, 4]
 bloodwalls = [0 , 25 , -25]
-
+franz = dict([("25,138","844,246"),("24,138","891,246")])
 # === VARIÁVEIS PARA MONITORAMENTO DE MEMÓRIA ===
 memory_reader = None
 process_base_address = 0
@@ -51,7 +57,10 @@ monitored_addresses = {}
 memory_values = {}  # Valores atuais da memória (acessível por descrição)
 monitoring_active = False
 monitoring_thread = None
-addresses_file = "memory_addresses.json" 
+addresses_file = "memory_addresses.json"
+
+# === VARIÁVEL PARA CONTROLE DE MOVIMENTO ===
+ultimo_movimento = None  # Guarda o último movimento bem-sucedido para evitar vai-e-volta 
 
 def saveCurrentMousePosition():
     global mouseAntesX
@@ -79,16 +88,21 @@ def lootGround():
     pyautogui.press('backspace')
     pyautogui.moveTo(mouseAntesX, mouseAntesY)
 def debug():
-    print("isDead" , isDead())
-    print("amIinPerona" , amIinPerona())
+    x, y = pyautogui.position()
+    print(f"Mouse position:\n\n\n\n\n\n ({x}, {y})")
+    # currentPlayerX = get_memory_value("X")
+    # currentPlayerY = get_memory_value("Y")
+    # key = f"{currentPlayerX},{currentPlayerY}"
+    # valor = franz.get(key)
+    # print("chave: ", key)
 
-def move():
+def move(): 
     global autoClickOn
-
+    global ultimo_movimento
 
     # Obter posição atual da memória ANTES de tentar mover
-    pos_x_antes = get_memory_value("X")
-    pos_y_antes = get_memory_value("Y")
+    pos_x_ante = get_memory_value("X")
+    pos_y_ante = get_memory_value("Y")
     
     print("Movendo...")
     
@@ -96,29 +110,42 @@ def move():
     opcoes_disponiveis = []
     
     # Verificar se pode ir para DIREITA (1)
-    if pos_x_antes is None or pos_x_antes <= 90:
+    if pos_x_ante is None or pos_x_ante <= 110:
         opcoes_disponiveis.append(1)
     else:
-        print("⚠️ Limite direito atingido! X = " + str(pos_x_antes))
+        print("⚠️ Limite direito atingido! X = " + str(pos_x_ante))
     
     # Verificar se pode ir para ESQUERDA (2)
-    if pos_x_antes is None or pos_x_antes >= 40:
+    if pos_x_ante is None or pos_x_ante >= 20:
         opcoes_disponiveis.append(2)
     else:
-        print("⚠️ Limite esquerdo atingido! X = " + str(pos_x_antes))
+        print("⚠️ Limite esquerdo atingido! X = " + str(pos_x_ante))
     
     # Verificar se pode ir para CIMA (3)
-    if pos_y_antes is None or pos_y_antes >= 40:
+    if pos_y_ante is None or pos_y_ante >= 20:
         opcoes_disponiveis.append(3)
     else:
-        print("⚠️ Limite superior atingido! Y = " + str(pos_y_antes))
+        print("⚠️ Limite superior atingido! Y = " + str(pos_y_ante))
     
     # Verificar se pode ir para BAIXO (4)
-    if pos_y_antes is None or pos_y_antes <= 210:
+    if pos_y_ante is None or pos_y_ante <= 230:
         opcoes_disponiveis.append(4)
     else:
-        print("⚠️ Limite inferior atingido! Y = " + str(pos_y_antes))
-    
+        print("⚠️ Limite inferior atingido! Y = " + str(pos_y_ante))
+        # Diagonais
+    # Noroeste (esquerda + cima)
+    if (pos_x_ante is None or pos_x_ante >= 20) and (pos_y_ante is None or pos_y_ante >= 20):
+        opcoes_disponiveis.append(5)
+    # Sudoeste (esquerda + baixo)
+    if (pos_x_ante is None or pos_x_ante >= 20) and (pos_y_ante is None or pos_y_ante <= 230):
+        opcoes_disponiveis.append(6)
+    # Sudeste (direita + baixo)
+    if (pos_x_ante is None or pos_x_ante <= 110) and (pos_y_ante is None or pos_y_ante <= 230):
+        opcoes_disponiveis.append(7)
+    # Nordeste (direita + cima)
+    if (pos_x_ante is None or pos_x_ante <= 110) and (pos_y_ante is None or pos_y_ante >= 20):
+        opcoes_disponiveis.append(8)
+        
     # Se não houver opções disponíveis, não mover
     if not opcoes_disponiveis:
         print("❌ Sem opções de movimento disponíveis! Personagem pode estar preso.")
@@ -129,7 +156,11 @@ def move():
         1: 3,  # Direita: 3 vezes
         2: 3,  # Esquerda: 3 vezes
         3: 4,  # Cima: 4 vezes
-        4: 4   # Baixo: 4 vezes
+        4: 4,  # Baixo: 4 vezes
+        5:3,   # Noroeste: 3 vezes
+        6:3,    #Suoeste: 3 vezes
+        7:3,   #Sudeste: 3 vezes
+        8:3    #Nordeste: 3 vezes
     }
     
     # Definir qual função chamar para cada escolha
@@ -137,7 +168,11 @@ def move():
         1: moveRight,
         2: moveLeft,
         3: moveUp,
-        4: moveDown
+        4: moveDown,
+        5: moveNorthWest,
+        6: moveSouthWest,
+        7: moveSouthEast,
+        8: moveNorthEast
     }
     
     # Nomes das direções
@@ -145,7 +180,23 @@ def move():
         1: "➡️ Direita",
         2: "⬅️ Esquerda",
         3: "⬆️ Cima",
-        4: "⬇️ Baixo"
+        4: "⬇️ Baixo",
+        5: "↖️ Noroeste",
+        6: "↙️ Sudoeste",
+        7: "↘️ Sudeste",
+        8: "↗️ Nordeste"
+    }
+    
+    # === MAPEAMENTO DE DIREÇÕES OPOSTAS ===
+    direcoes_opostas = {
+        1: 2,  # Direita ↔ Esquerda
+        2: 1,  # Esquerda ↔ Direita
+        3: 4,  # Cima ↔ Baixo
+        4: 3,   # Baixo ↔ Cima
+        8:6, # Nordeste ↔ Sudoeste
+        6:8, # Sudoeste ↔ Nordeste
+        5:7, # Noroeste ↔ Sudeste
+        7:5  # Sudeste ↔ Noroeste
     }
     
     # === SISTEMA DE TENTATIVAS ===
@@ -154,29 +205,109 @@ def move():
     movimento_sucesso = False
     
     while tentativas < max_tentativas and autoClickOn and not movimento_sucesso:
-        # Escolher direção
-        escolha = random.choice(opcoes_disponiveis)
+        # Criar cópia das opções disponíveis para este ciclo
+        opcoes_atuais = opcoes_disponiveis.copy()
+        
+        # === EVITAR MOVIMENTO OPOSTO AO ANTERIOR ===
+        if ultimo_movimento is not None and ultimo_movimento in direcoes_opostas:
+            direcao_oposta = direcoes_opostas[ultimo_movimento]
+            
+            # Remover direção oposta APENAS se houver outras opções
+            if direcao_oposta in opcoes_atuais and len(opcoes_atuais) > 1:
+                opcoes_atuais.remove(direcao_oposta)
+                print(f"🚫 Evitando direção oposta: {nomes_direcoes[direcao_oposta]}")
+        
+        # === CALCULAR PROBABILIDADES BASEADAS NA POSIÇÃO ===
+        pesos = {}
+        
+        if pos_x_ante is not None and pos_y_ante is not None:
+            # Normalizar posição (0 a 1)
+            posicao_x_normalizada = (pos_x_ante - 20) / (110 - 20)  # 0 = esquerda, 1 = direita
+            posicao_y_normalizada = (pos_y_ante - 20) / (230 - 20)  # 0 = cima, 1 = baixo
+            
+            for direcao in opcoes_atuais:
+                peso_base = 1.0
+                
+                if direcao == 1:  # DIREITA
+                    # Se está muito à esquerda, aumentar MUITO a probabilidade de ir pra direita
+                    if posicao_x_normalizada < 0.2:
+                        peso_base = 4.0
+                    elif posicao_x_normalizada < 0.4:
+                        peso_base = 2.5
+                    # Se está muito à direita, REDUZIR probabilidade
+                    elif posicao_x_normalizada > 0.8:
+                        peso_base = 0.2
+                        
+                elif direcao == 2:  # ESQUERDA
+                    # Se está muito à direita, aumentar MUITO a probabilidade de ir pra esquerda
+                    if posicao_x_normalizada > 0.8:
+                        peso_base = 4.0
+                    elif posicao_x_normalizada > 0.6:
+                        peso_base = 2.5
+                    # Se está muito à esquerda, REDUZIR probabilidade
+                    elif posicao_x_normalizada < 0.2:
+                        peso_base = 0.2
+                        
+                elif direcao == 3:  # CIMA
+                    # Se está muito embaixo, aumentar probabilidade de subir
+                    if posicao_y_normalizada > 0.8:
+                        peso_base = 3.0
+                    elif posicao_y_normalizada > 0.6:
+                        peso_base = 2.0
+                    # Se está em cima, REDUZIR BASTANTE (para focar em horizontal)
+                    elif posicao_y_normalizada < 0.3:
+                        peso_base = 0.1
+                        
+                elif direcao == 4:  # BAIXO
+                    # Se está muito em cima, aumentar probabilidade de descer
+                    if posicao_y_normalizada < 0.2:
+                        peso_base = 3.0
+                    elif posicao_y_normalizada < 0.4:
+                        peso_base = 2.0
+                    # Se está embaixo, REDUZIR BASTANTE (para focar em horizontal)
+                    elif posicao_y_normalizada > 0.7:
+                        peso_base = 0.1
+                
+                pesos[direcao] = peso_base
+        else:
+            # Se não tiver posição, usar pesos iguais
+            for direcao in opcoes_atuais:
+                pesos[direcao] = 1.0
+        
+        # Escolher direção usando pesos (random.choices com weights)
+        escolha = random.choices(opcoes_atuais, weights=[pesos[d] for d in opcoes_atuais], k=1)[0]
+        
+        # Debug: mostrar pesos calculados na primeira tentativa
+        if tentativas == 0 and pos_x_ante is not None and pos_y_ante is not None:
+            print(f"📊 Probabilidades: ", end="")
+            for d in opcoes_atuais:
+                print(f"{nomes_direcoes[d]}={pesos[d]:.1f}x ", end="")
+            print()
         funcao_movimento = movimentos[escolha]
         quantidade = repeticoes[escolha]
         direcao = nomes_direcoes[escolha]
         
         if tentativas == 0:
-            print(f"📍 Posição antes: X={pos_x_antes}, Y={pos_y_antes}")
+            print(f"📍 Posição antes: X={pos_x_ante}, Y={pos_y_ante}")
             print(f"Movendo para {direcao} por {quantidade} vezes.")
         else:
             print(f"🔄 Tentativa {tentativas + 1}/{max_tentativas}: Movendo para {direcao}")
 
-            
-        pos_x_antes = get_memory_value("X")
-        pos_y_antes = get_memory_value("Y")
+        # CAPTURAR posição ANTES do movimento (para comparação posterior)
+        pos_x_antes_movimento = get_memory_value("X")
+        pos_y_antes_movimento = get_memory_value("Y")
+        
         # === EXECUTAR MOVIMENTO ===
         for i in range(quantidade):
             if autoClickOn:
                 funcao_movimento()
                 time.sleep(0.2)
         
-        # === AGUARDAR ESTABILIZAÇÃO ===
-        time.sleep(1.2)
+        # === AGUARDAR ESTABILIZAÇÃO (aumentado para garantir atualização) ===
+        time.sleep(2.0)  # Aumentado de 1.2s para 2.0s
+        
+        # Forçar atualização imediata dos valores de memória
+        force_memory_update()
         
         # === VERIFICAR SE MOVEU ===
         pos_x_depois = get_memory_value("X")
@@ -184,20 +315,23 @@ def move():
         
         print(f"📍 Posição depois: X={pos_x_depois}, Y={pos_y_depois}")
         
-        # Verificar se a posição mudou
-        if pos_x_antes is not None and pos_y_antes is not None and \
+        # Verificar se a posição mudou (comparar com a posição ANTES do movimento)
+        if pos_x_antes_movimento is not None and pos_y_antes_movimento is not None and \
            pos_x_depois is not None and pos_y_depois is not None:
             
             # Calcular diferença
-            diferenca_x = abs(pos_x_depois - pos_x_antes)
-            diferenca_y = abs(pos_y_depois - pos_y_antes)
+            diferenca_x = abs(pos_x_depois - pos_x_antes_movimento)
+            diferenca_y = abs(pos_y_depois - pos_y_antes_movimento)
             
-            # Se moveu (diferença >= 2 pixels)
-            if diferenca_x >= 2 or diferenca_y >= 2:
+            # Se moveu (diferença >= 1 pixel - mais tolerante)
+            if diferenca_x >= 1 or diferenca_y >= 1:
                 print(f"✅ Movimento confirmado! Δx={diferenca_x}, Δy={diferenca_y}")
                 movimento_sucesso = True
+                ultimo_movimento = escolha  # ← GUARDAR movimento bem-sucedido
             else:
-                print("⚠️ PERSONAGEM NÃO SE MOVEU!")
+                print(f"⚠️ PERSONAGEM NÃO SE MOVEU! (Δx={diferenca_x}, Δy={diferenca_y})")
+                print(f"   Posição antes: ({pos_x_antes_movimento}, {pos_y_antes_movimento})")
+                print(f"   Posição depois: ({pos_x_depois}, {pos_y_depois})")
                 
                 # Remover direção que falhou
                 if escolha in opcoes_disponiveis:
@@ -216,7 +350,8 @@ def move():
     
     # Se esgotou tentativas sem sucesso
     if not movimento_sucesso and tentativas >= max_tentativas:
-        print("❌ Personagem PRESO após 3 tentativas! Voltando para Beginners...")
+        print("❌ Personagem PRESO após 10 tentativas! Voltando para Beginners...")
+        backToBeginners()
         
 
 def attack():
@@ -260,11 +395,16 @@ def checks():
         Dead()
     if amIinPerona():
         print("O personagem está em Perona.")
+        # pyautogui.press('esc')
+        # time.sleep(1)
+        # pyautogui.press('l')
         backToBeginners()
 
 
 def Dead():
-    time.sleep(7)
+    time.sleep(6)
+    pyautogui.keyUp('alt')
+    time.sleep(1)
     pyautogui.leftClick(272, 850)
     time.sleep(3)
 
@@ -279,8 +419,19 @@ def hold_right_click():
     
     pyautogui.keyUp('alt')  # Solta Alt quando para  
 def backToBeginners():
+    global mouseAttackX
+    global mouseAttackY
+
+    pyautogui.press('f9')
+    time.sleep(0.3)
+    pyautogui.rightClick(mouseAttackX, mouseAttackY)
+    time.sleep(0.2)
+    pyautogui.write('daron'.lower())
+    time.sleep(0.2)
+    pyautogui.press('enter')
+    time.sleep(14)
     pyautogui.keyDown('ctrlright') 
-    pyautogui.leftClick(793, 233)
+    pyautogui.leftClick(216, 556)
     time.sleep(0.5)
     pyautogui.keyUp('ctrlright')
     pyautogui.leftClick(540, 559)
@@ -391,6 +542,63 @@ def moveInicioBegginers():
     pyautogui.rightClick(mouseAttackX + offset, mouseAttackY + offset)
     pyautogui.keyUp('alt')  # Solta Alt quando para  
 
+
+def moveSouthEast():
+    offset = -110
+    global mouseAttackX
+    global mouseAttackY
+    print("Movendo para o Sudeste...")
+    pyautogui.press('f7') #usar skill f7 (rapid glinding)
+    time.sleep(0.5)
+    pyautogui.keyDown('alt')
+    pyautogui.rightClick(mouseAttackX + offset, mouseAttackY + offset)
+    time.sleep(0.5)  # Solta Alt quando para  
+    pyautogui.leftClick(mouseAttackX + (offset * 2), mouseAttackY + (offset * 2))
+    time.sleep(2)
+    pyautogui.keyUp('alt')
+
+def moveNorthEast():
+    offset = 110
+    global mouseAttackX
+    global mouseAttackY
+    print("Movendo para o Nordeste...")
+    pyautogui.press('f7') #usar skill f7 (rapid glinding)
+    time.sleep(0.5)
+    pyautogui.keyDown('alt')
+    pyautogui.rightClick(mouseAttackX + offset, mouseAttackY - offset)
+    time.sleep(0.5)  # Solta Alt quando para  
+    pyautogui.leftClick(mouseAttackX + (offset * 2), mouseAttackY - (offset * 2))
+    time.sleep(2)
+    pyautogui.keyUp('alt')
+
+def moveSouthWest():
+    offset = -110
+    global mouseAttackX
+    global mouseAttackY
+    print("Movendo para o Sudoeste...")
+    pyautogui.press('f7') #usar skill f7 (rapid glinding)
+    time.sleep(0.5)
+    pyautogui.keyDown('alt')
+    pyautogui.rightClick(mouseAttackX - offset, mouseAttackY + offset)
+    time.sleep(0.5)  # Solta Alt quando para  
+    pyautogui.leftClick(mouseAttackX - (offset * 2), mouseAttackY + (offset * 2))
+    time.sleep(2)
+    pyautogui.keyUp('alt')
+
+def moveNorthWest():
+    offset = 110
+    global mouseAttackX
+    global mouseAttackY
+    print("Movendo para o Noroeste...")
+    pyautogui.press('f7') #usar skill f7 (rapid glinding)
+    time.sleep(0.5)
+    pyautogui.keyDown('alt')
+    pyautogui.rightClick(mouseAttackX - offset, mouseAttackY - offset)
+    time.sleep(0.5)  # Solta Alt quando para  
+    pyautogui.leftClick(mouseAttackX - (offset * 2), mouseAttackY - (offset * 2))
+    time.sleep(2)
+    pyautogui.keyUp('alt')
+
 def moveRight():
     offset = 250
     global mouseAttackX
@@ -464,17 +672,57 @@ def init_memory_reader():
     """Inicializa o leitor de memória conectando ao processo Dark Eden"""
     global memory_reader, process_base_address
     
-    # Procurar processo darkeden.exe
-    target_process = None
+    # Procurar TODOS os processos darkeden.exe
+    darkeden_processes = []
     for proc in psutil.process_iter(['pid', 'name']):
         if 'darkeden' in proc.info['name'].lower():
-            target_process = proc
-            break
+            darkeden_processes.append(proc)
     
-    if not target_process:
-        print("Processo Dark Eden não encontrado!")
+    if not darkeden_processes:
+        print("❌ Nenhum processo Dark Eden encontrado!")
         return False
     
+    # Se houver múltiplos processos, permitir seleção
+    target_process = None
+    if len(darkeden_processes) == 1:
+        target_process = darkeden_processes[0]
+        print(f"✅ Único processo encontrado: PID {target_process.info['pid']}")
+    else:
+        print("\n" + "="*60)
+        print(f"⚠️ MÚLTIPLOS PROCESSOS DETECTADOS ({len(darkeden_processes)} processos)")
+        print("="*60)
+        print("Escolha qual processo usar:")
+        print("-"*60)
+        
+        for idx, proc in enumerate(darkeden_processes, 1):
+            try:
+                # Tentar obter informações extras do processo
+                cpu_percent = proc.cpu_percent(interval=0.1)
+                memory_mb = proc.memory_info().rss / (1024 * 1024)
+                print(f"  [{idx}] PID: {proc.info['pid']:<6} | CPU: {cpu_percent:5.1f}% | RAM: {memory_mb:6.1f} MB")
+            except:
+                print(f"  [{idx}] PID: {proc.info['pid']}")
+        
+        print("="*60)
+        
+        while True:
+            try:
+                escolha = input(f"Digite o número do processo [1-{len(darkeden_processes)}]: ").strip()
+                escolha_num = int(escolha)
+                
+                if 1 <= escolha_num <= len(darkeden_processes):
+                    target_process = darkeden_processes[escolha_num - 1]
+                    print(f"✅ Processo selecionado: PID {target_process.info['pid']}")
+                    break
+                else:
+                    print(f"❌ Número inválido! Digite entre 1 e {len(darkeden_processes)}")
+            except ValueError:
+                print("❌ Digite um número válido!")
+            except KeyboardInterrupt:
+                print("\n❌ Operação cancelada pelo usuário")
+                return False
+    
+    # Conectar ao processo selecionado
     try:
         # Inicializar MemoryReader corretamente
         memory_reader = MemoryReader()
@@ -485,7 +733,7 @@ def init_memory_reader():
         
         process_base_address = get_process_base_address(target_process.info['pid'], target_process.info['name'])
         print(f"✅ Conectado ao processo: {target_process.info['name']} (PID: {target_process.info['pid']})")
-        print(f"Base address: 0x{process_base_address:X}")
+        print(f"📍 Base address: 0x{process_base_address:X}")
         return True
     except Exception as e:
         print(f"❌ Erro ao conectar ao processo: {e}")
@@ -632,20 +880,54 @@ def monitoring_loop():
             value = read_value_by_type(address, data_type)
             memory_values[description] = value
         
-        time.sleep(0.2)  # Atualiza a cada 100ms
+        time.sleep(0.1)  # Atualiza a cada 100ms (reduzido de 200ms)
 
 def show_memory_values():
-    """Exibe os valores atuais da memória (acionado por F6)"""
+    """Exibe os valores atuais da memória com debug detalhado (acionado por F6)"""
     if not memory_values:
-        print("Nenhum valor de memória disponível. Ative o monitoramento com F7.")
+        print("Nenhum valor de memória disponível. Ative o monitoramento com " + hotkeyToggleMonitoring.upper())
         return
     
-    print("\n=== VALORES DE MEMÓRIA ===")
+    # Forçar atualização IMEDIATA antes de exibir
+    force_memory_update()
+    time.sleep(0.05)  # Pequeno delay para garantir leitura
+    
+    print("\n" + "="*80)
+    print("🔍 VALORES DE MEMÓRIA (Debug Detalhado)")
+    print("="*80)
+    print(f"{'DESCRIÇÃO':<15} | {'VALOR':<15} | {'ENDEREÇO':<20} | {'TIPO':<10}")
+    print("-"*80)
+    
     for description, value in memory_values.items():
         info = monitored_addresses.get(description, {})
         address_str = info.get('address_str', 'N/A')
-        print(f"{description}: {value} (Endereço: {address_str})")
-    print("========================\n")
+        address_hex = info.get('address', 0)
+        data_type = info.get('type', 'N/A')
+        
+        # Formatar valor baseado no tipo
+        if value is None:
+            value_display = "❌ NULL"
+        else:
+            value_display = str(value)
+        
+        # Exibir linha principal
+        print(f"{description:<15} | {value_display:<15} | 0x{address_hex:08X} ({address_str[:10]}) | {data_type:<10}")
+        
+        # DEBUG ESPECIAL para X e Y - ler diretamente e comparar
+        # if description in ["X", "Y"] and address_hex != 0:
+        #     # Tentar ler com TODOS os tipos possíveis
+        #     tipos_teste = ['int32', 'uint32', 'int16', 'uint16', 'int8', 'uint8', 'float']
+        #     print(f"   🔬 Teste de tipos para {description}:")
+            
+        #     for tipo in tipos_teste:
+        #         try:
+        #             valor_teste = read_value_by_type(address_hex, tipo)
+        #             if valor_teste is not None and valor_teste != value:
+        #                 print(f"      • {tipo}: {valor_teste} {'← DIFERENTE!' if abs(valor_teste - (value or 0)) > 1 else ''}")
+        #         except:
+        #             pass
+    
+    print("="*80 + "\n")
 
 def toggle_memory_monitoring():
     """Ativa/desativa o monitoramento de memória (acionado por F7)"""
@@ -673,6 +955,184 @@ def get_memory_value(description):
     """
     return memory_values.get(description, None)
 
+def force_memory_update():
+    """Força atualização imediata dos valores de memória com retry"""
+    global memory_values
+    if not monitored_addresses or not memory_reader:
+        return
+    
+    # Ler DUAS vezes para garantir consistência
+    for tentativa in range(2):
+        for description, info in monitored_addresses.items():
+            address = info['address']
+            data_type = info['type']
+            value = read_value_by_type(address, data_type)
+            
+            # Validação extra para X e Y
+            if description in ["X", "Y"] and value is not None:
+                # X deve estar entre 0-200, Y entre 0-300 (valores razoáveis)
+                if description == "X" and (value < 0 or value > 200):
+                    print(f"⚠️ Valor suspeito para X: {value} (tipo: {data_type}, endereço: 0x{address:08X})")
+                    print(f"   Tentando ler como outros tipos...")
+                    # Tentar int16 se for int32
+                    if data_type == 'int32':
+                        value_alt = read_value_by_type(address, 'int16')
+                        if value_alt and 0 < value_alt < 200:
+                            print(f"   ✅ Valor correto com int16: {value_alt}")
+                            value = value_alt
+                            
+                elif description == "Y" and (value < 0 or value > 300):
+                    print(f"⚠️ Valor suspeito para Y: {value} (tipo: {data_type}, endereço: 0x{address:08X})")
+                    print(f"   Tentando ler como outros tipos...")
+                    if data_type == 'int32':
+                        value_alt = read_value_by_type(address, 'int16')
+                        if value_alt and 0 < value_alt < 300:
+                            print(f"   ✅ Valor correto com int16: {value_alt}")
+                            value = value_alt
+            
+            memory_values[description] = value
+        
+        if tentativa == 0:
+            time.sleep(0.02)  # Pequeno delay entre tentativas
+
+def reconnect_to_process():
+    """Reconecta a um processo diferente (acionado por F9)"""
+    global monitoring_active, memory_reader, process_base_address, memory_values
+    
+    print("\n" + "="*60)
+    print("🔄 RECONECTANDO A OUTRO PROCESSO...")
+    print("="*60)
+    
+    # Parar monitoramento se estiver ativo
+    was_monitoring = monitoring_active
+    if monitoring_active:
+        monitoring_active = False
+        time.sleep(0.3)  # Aguardar thread parar
+        print("⏸️ Monitoramento pausado")
+    
+    # Fechar conexão atual
+    if memory_reader and hasattr(memory_reader, 'process_handle'):
+        try:
+            if memory_reader.process_handle:
+                ctypes.windll.kernel32.CloseHandle(memory_reader.process_handle)
+                print("🔌 Conexão anterior fechada")
+        except:
+            pass
+    
+    memory_reader = None
+    process_base_address = 0
+    memory_values = {}
+    
+    # Reinicializar com novo processo
+    if init_memory_reader():
+        load_addresses()
+        
+        # Reativar monitoramento se estava ativo
+        if was_monitoring:
+            monitoring_active = True
+            monitoring_thread = threading.Thread(target=monitoring_loop, daemon=True)
+            monitoring_thread.start()
+            print("▶️ Monitoramento reativado")
+        
+        print("✅ Reconexão bem-sucedida!")
+    else:
+        print("❌ Falha na reconexão")
+    
+    print("="*60 + "\n")
+
+def debug_xy_memory():
+    """Debug específico para X e Y - análise completa com bytes brutos e offsets"""
+    print("\n" + "="*80)
+    print("🔬 DEBUG DETALHADO - POSIÇÃO X e Y (Análise de Bytes)")
+    print("="*80)
+    
+    for desc in ["X", "Y"]:
+        if desc not in monitored_addresses:
+            print(f"❌ {desc} não está nos endereços monitorados")
+            continue
+        
+        info = monitored_addresses[desc]
+        address = info['address']
+        address_str = info['address_str']
+        data_type_config = info['type']
+        
+        print(f"\n📍 {desc}:")
+        print(f"   Endereço base: 0x{address:08X} ({address_str})")
+        print(f"   Tipo configurado: {data_type_config}")
+        print(f"   Valor atual (cache): {memory_values.get(desc, 'N/A')}")
+        
+        # === LER BYTES BRUTOS (8 bytes para análise) ===
+        try:
+            import ctypes
+            if memory_reader and memory_reader.process_handle:
+                bytes_read = ctypes.c_ulonglong()
+                buffer = ctypes.create_string_buffer(8)
+                success = ctypes.windll.kernel32.ReadProcessMemory(
+                    memory_reader.process_handle,
+                    ctypes.c_void_p(address),
+                    buffer,
+                    8,
+                    ctypes.byref(bytes_read)
+                )
+                
+                if success:
+                    raw_bytes = buffer.raw[:8]
+                    print(f"\n   📦 Bytes brutos (8 bytes a partir de 0x{address:08X}):")
+                    print(f"      Hex: {' '.join(f'{b:02X}' for b in raw_bytes)}")
+                    print(f"      Dec: {' '.join(f'{b:3d}' for b in raw_bytes)}")
+                    
+                    # Interpretar como int32 (little-endian)
+                    int32_value = int.from_bytes(raw_bytes[:4], byteorder='little', signed=True)
+                    uint32_value = int.from_bytes(raw_bytes[:4], byteorder='little', signed=False)
+                    print(f"\n   🔢 Interpretação dos primeiros 4 bytes:")
+                    print(f"      int32 (com sinal):  {int32_value} {('✅ VÁLIDO' if (desc=='X' and 0<=int32_value<=200) or (desc=='Y' and 0<=int32_value<=300) else '')}")
+                    print(f"      uint32 (sem sinal): {uint32_value} {('✅ VÁLIDO' if (desc=='X' and 0<=uint32_value<=200) or (desc=='Y' and 0<=uint32_value<=300) else '')}")
+                    
+                    # Tentar diferentes offsets (caso esteja desalinhado)
+                    print(f"\n   🔄 Testando offsets (+1, +2, +3 bytes):")
+                    for offset in [1, 2, 3]:
+                        offset_addr = address + offset
+                        buffer_offset = ctypes.create_string_buffer(4)
+                        success_offset = ctypes.windll.kernel32.ReadProcessMemory(
+                            memory_reader.process_handle,
+                            ctypes.c_void_p(offset_addr),
+                            buffer_offset,
+                            4,
+                            ctypes.byref(bytes_read)
+                        )
+                        
+                        if success_offset:
+                            bytes_offset = buffer_offset.raw[:4]
+                            int32_offset = int.from_bytes(bytes_offset, byteorder='little', signed=True)
+                            uint32_offset = int.from_bytes(bytes_offset, byteorder='little', signed=False)
+                            
+                            valido_int32 = (desc=='X' and 0<=int32_offset<=200) or (desc=='Y' and 0<=int32_offset<=300)
+                            valido_uint32 = (desc=='X' and 0<=uint32_offset<=200) or (desc=='Y' and 0<=uint32_offset<=300)
+                            
+                            if valido_int32 or valido_uint32:
+                                print(f"      ➕ Offset +{offset} (0x{offset_addr:08X}):")
+                                print(f"         Bytes: {' '.join(f'{b:02X}' for b in bytes_offset)}")
+                                if valido_int32:
+                                    print(f"         int32:  {int32_offset} ✅ VÁLIDO")
+                                if valido_uint32:
+                                    print(f"         uint32: {uint32_offset} ✅ VÁLIDO")
+                    
+                    # Testar int16 e uint16 também
+                    print(f"\n   🔢 Interpretação como 16-bit (2 bytes):")
+                    int16_value = int.from_bytes(raw_bytes[:2], byteorder='little', signed=True)
+                    uint16_value = int.from_bytes(raw_bytes[:2], byteorder='little', signed=False)
+                    print(f"      int16 (com sinal):  {int16_value} {('✅ VÁLIDO' if (desc=='X' and 0<=int16_value<=200) or (desc=='Y' and 0<=int16_value<=300) else '')}")
+                    print(f"      uint16 (sem sinal): {uint16_value} {('✅ VÁLIDO' if (desc=='X' and 0<=uint16_value<=200) or (desc=='Y' and 0<=uint16_value<=300) else '')}")
+                    
+        except Exception as e:
+            print(f"   ❌ Erro ao ler bytes brutos: {e}")
+            traceback.print_exc()
+    
+    print("="*80)
+    print("💡 DICA: Se um offset diferente mostrar ✅ VÁLIDO, atualize o endereço no JSON")
+    print("   Exemplo: Se offset +2 é válido, mude 'darkeden.exe+357778' para 'darkeden.exe+35777A'")
+    print("="*80 + "\n")
+
 # === FUNÇÕES EXISTENTES ===
 if __name__ == "__main__":
     # Start the background task in a separate thread
@@ -687,15 +1147,19 @@ if __name__ == "__main__":
     keyboard.add_hotkey(hotkeyLoot, debug)
     
     # === HOTKEYS DE MONITORAMENTO DE MEMÓRIA ===
-    keyboard.add_hotkey('f6', show_memory_values)
-    keyboard.add_hotkey('f7', toggle_memory_monitoring)
+    keyboard.add_hotkey(hotkeyShowMemory, show_memory_values)
+    keyboard.add_hotkey(hotkeyToggleMonitoring, toggle_memory_monitoring)
+    keyboard.add_hotkey(hotkeyDebugXY, debug_xy_memory)
+    keyboard.add_hotkey(hotkeyReconnectProcess, reconnect_to_process)
     
     print("Tecla para atacar mouse direito (Segurar): " + hotkeyHoldRight)
     print("Tecla para combo mago: " + hotkeyAttack + " NECESSÁRIO MARCAR POSIÇÃO EM BAIXO DO CHAR")
     print("Tecla para setar posição: " + hotkeySalvar)
     print("\n=== MONITORAMENTO DE MEMÓRIA ===")
-    print("F6: Mostrar valores de memória")
-    print("F7: Ativar/Desativar monitoramento")
+    print(hotkeyShowMemory.upper() + ": Mostrar valores de memória")
+    print(hotkeyToggleMonitoring.upper() + ": Ativar/Desativar monitoramento")
+    print(hotkeyDebugXY.upper() + ": Debug detalhado X/Y (todos os tipos)")
+    print(hotkeyReconnectProcess.upper() + ": Reconectar a outro processo (útil quando há múltiplas instâncias)")
     print("================================\n")
     
     # Keep the main thread alive to listen for the hotkey

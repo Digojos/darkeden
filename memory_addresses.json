@@ -1,15 +1,15 @@
 {
   "addresses": [
-    {
-      "address_str": "darkeden.exe+2FB1CC",
-      "data_type": "int32",
-      "description": "Y"
-    },
-    {
-      "address_str": "darkeden.exe+2FB1C8",
+     {
+      "address_str": "0x1887E918",
       "data_type": "int32",
       "description": "X"
     },
+    {
+      "address_str": "0x1887E91C",
+      "data_type": "int32",
+      "description": "Y"
+    },   
     {
       "address_str": "darkeden.exe+357780",
       "data_type": "int32",
@@ -21,7 +21,7 @@
       "description": "HP"
     },
     {
-      "address_str": "0x18F00F71",
+      "address_str": "0x21111C11",
       "data_type": "string",
       "description": "Mapa"
     }
