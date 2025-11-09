@@ -63,8 +63,10 @@ def hold_right_click():
     while holding:
         pyautogui.mouseDown(button='right')
         time.sleep(0.1)  # Small sleep to reduce CPU usage
+        pyautogui.keyDown('capslock')
     
     pyautogui.keyUp('alt')  # Solta Alt quando para  
+    pyautogui.keyUp('capslock')
 
 def Mage_hold_right_click():
     global autoClickOn
