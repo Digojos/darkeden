@@ -13,7 +13,7 @@ mouseAntesY = 0
 lootMouseX = 1262
 lootMouseY = 194
 hotkeyHoldRight = 'f4'
-hotkeyAttack = 'f3'
+hotkeyAttack = '\\'
 hotkeySalvar = 'alt+1'
 hotkeyBloodyWall = 'f12'
 hotkeyMeteoroNoose = 'f5'
@@ -22,7 +22,7 @@ hotkeyMoveLeft = 'left'
 hotkeyMoveUp = 'up'
 hotkeyMoveDown = 'down'
 hotkeyViolentPhatom = '';
-hotkeyLoot = '\\'
+hotkeyLoot = 'f3'
 
 
 bloodwalls = [0 , 25 , -25] 
