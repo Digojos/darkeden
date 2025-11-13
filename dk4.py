@@ -10,6 +10,9 @@ import ctypes.wintypes
 import psutil
 import struct
 import json
+from findItemDK import isThereAreItem
+from findMonsterDK import has_red_in_region
+
 
 # Importar MemoryReader
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -43,6 +46,8 @@ hotkeyLoot = 'f3'
 hotkeyMephis = 'f8'
 hotkeySC = 'f9'
 hotkeyNooseAndVenom = 'f11'
+hotkeyPoisonAcidStorm = 'f10'
+hotkeyRapidGlinding = 'f7'
 # === HOTKEYS DE MONITORAMENTO DE MEMÓRIA ===
 hotkeyShowMemory = 'ctrl+alt+m'          # Mostrar valores de memória
 hotkeyToggleMonitoring = 'ctrl+alt+t'    # Ativar/Desativar monitoramento
@@ -92,11 +97,27 @@ def lootGround():
 def debug():
     x, y = pyautogui.position()
     print(f"Mouse position:\n\n\n\n\n\n ({x}, {y})")
+    
     # currentPlayerX = get_memory_value("X")
     # currentPlayerY = get_memory_value("Y")
     # key = f"{currentPlayerX},{currentPlayerY}"
     # valor = franz.get(key)
     # print("chave: ", key)
+
+def lootGround2():
+    count = 0
+    while count < 4 and isThereAreItem():
+        print("Pegando item...")
+        pyautogui.keyDown('alt')
+        time.sleep(0.1)
+        pyautogui.press(hotkeyRapidGlinding)
+        pyautogui.rightClick(1002, 193)
+        time.sleep(2)
+        pyautogui.rightClick(1002, 193)
+        time.sleep(1)
+        pyautogui.leftClick(1002, 193)
+        pyautogui.keyUp('alt')
+        count+=1
 
 def move(): 
     global autoClickOn
@@ -155,14 +176,14 @@ def move():
     
     # Definir quantas vezes mover para cada direção
     repeticoes = {
-        1: 3,  # Direita: 3 vezes
-        2: 3,  # Esquerda: 3 vezes
-        3: 4,  # Cima: 4 vezes
-        4: 4,  # Baixo: 4 vezes
-        5: 4,   # Noroeste: 3 vezes
-        6: 4,   #Suoeste: 3 vezes
-        7: 4,   #Sudeste: 3 vezes
-        8: 4    #Nordeste: 3 vezes
+        1: 4,  # Direita: 3 vezes
+        2: 4,  # Esquerda: 3 vezes
+        3: 5,  # Cima: 4 vezes
+        4: 5,  # Baixo: 4 vezes
+        5: 5,   # Noroeste: 3 vezes
+        6: 5,   #Suoeste: 3 vezes
+        7: 5,   #Sudeste: 3 vezes
+        8: 5    #Nordeste: 3 vezes
     }
     
     # Definir qual função chamar para cada escolha
@@ -195,10 +216,10 @@ def move():
         2: 1,  # Esquerda ↔ Direita
         3: 4,  # Cima ↔ Baixo
         4: 3,   # Baixo ↔ Cima
-        8:6, # Nordeste ↔ Sudoeste
-        6:8, # Sudoeste ↔ Nordeste
-        5:7, # Noroeste ↔ Sudeste
-        7:5  # Sudeste ↔ Noroeste
+        8: 6, # Nordeste ↔ Sudoeste
+        6: 8, # Sudoeste ↔ Nordeste
+        5: 7, # Noroeste ↔ Sudeste
+        7: 5  # Sudeste ↔ Noroeste
     }
     
     # === SISTEMA DE TENTATIVAS ===
@@ -358,22 +379,46 @@ def move():
 
 def attack():
     global autoClickOn
-    tempo_maximo = 40  # segundos
+    contadorWall = 0
+    wallTurn = 1
+    sizeBloodWall = len(bloodwalls)
+    time.sleep(1)
+    while contadorWall < sizeBloodWall: 
+            if autoClickOn:
+                wall = bloodwalls[contadorWall]
+                pyautogui.keyDown('alt') 
+                if wallTurn == 1:
+                    pyautogui.press(hotkeyBloodyWall)
+                    time.sleep(0.1)
+                    pyautogui.rightClick(mouseAttackX,mouseAttackY + wall)
+                    contadorWall += 1
+                    wallTurn = wallTurn * -1
+                else:
+                    pyautogui.press(hotkeyNooseAndVenom)
+                    time.sleep(0.1)
+                    pyautogui.rightClick(mouseAttackX,mouseAttackY)    
+                    wallTurn = wallTurn * -1
+                time.sleep(1)
+                pyautogui.keyUp('alt')
+
+    tempo_maximo = 25 # segundos
     tempo_inicio = time.time()
     print("Iniciando ataque por até " + str(tempo_maximo) + " segundos...")
     pyautogui.moveTo(mouseAttackX, mouseAttackY)
     pyautogui.keyDown('alt')  # Pressiona e mantém Alt no início
     
     while autoClickOn:
+        if not checks():
+            break
         # Calcular tempo decorrido
         tempo_decorrido = time.time() - tempo_inicio
-        checks()
         # Verificar se já passou o tempo máximo
         if tempo_decorrido >= tempo_maximo:
             print(f"⏱️ Tempo limite de {tempo_maximo}s atingido!")
             break
-        
+
         pyautogui.press(hotkeyNooseAndVenom)
+          
         #pyautogui.mouseDown(button='right')
         pyautogui.click(button='right')  # Clica e solta automaticamente
         time.sleep(1)  # Small sleep to reduce CPU usage
@@ -386,22 +431,27 @@ def init_bot():
     while autoClickOn:
         if autoClickOn and not isDead():
             checks()
-            attack()
+            attack()           
+        if autoClickOn and not isDead():
+            lootGround2()
         if autoClickOn and not isDead():    
             checks()
             move()
-            Mephistopheles()
+            #Mephistopheles()
 
 def checks():
     if isDead():
         print("O personagem está morto.")
         Dead()
+        return False
     if amIinPerona():
         print("O personagem está em Perona.")
         # pyautogui.press('esc')
         # time.sleep(1)
         # pyautogui.press('l')
         backToBeginners()
+        return False
+    return True
 
 
 def Dead():
@@ -417,7 +467,7 @@ def Dead():
     time.sleep(6)
     pyautogui.keyUp('alt')
     time.sleep(1)
-    pyautogui.leftClick(clickBtRespawnX, clickBtRespawnY)
+    pyautogui.leftClick(264, 646)
     time.sleep(3)
 
 def hold_right_click():
@@ -453,12 +503,12 @@ def backToBeginners():
 
     soulChain()
     pyautogui.keyDown('ctrlright')
-    pyautogui.leftClick(clicknpcx, clicknpcy)
+    pyautogui.leftClick(75, 445)
     time.sleep(0.5)
     pyautogui.keyUp('ctrlright')
-    pyautogui.leftClick(clickop1x, clickop1y)
+    pyautogui.leftClick(403, 464)
     time.sleep(0.5)
-    pyautogui.leftClick(clickop2x, clickop2y)
+    pyautogui.leftClick(451, 535)
     time.sleep(1.5)
     if amIinBeginners():
         for i in range(6):
@@ -467,6 +517,7 @@ def backToBeginners():
 
 def soulChain():
     while not PeronaRightPosition():
+        time.sleep(300)
         pyautogui.press(hotkeySC)
         time.sleep(0.5)
         pyautogui.rightClick(mouseAttackX, mouseAttackY)
@@ -497,6 +548,19 @@ def amIinPerona():
         mapa = get_memory_value("Mapa")
         if "Perona" in str(mapa):
             return True
+    return False
+
+def HPHigherThan80Percent():
+    print("hp", get_memory_value("HP"))
+    print("hpmax", get_memory_value("HPMax"))
+    if get_memory_value("HP") is not None and get_memory_value("HPMax") is not None:
+        print("Dentro do HPHigherThan80Percent")
+        hp = get_memory_value("HP")
+        hpmax = get_memory_value("HPMax")
+        hpPercent = (hp / hpmax) * 100
+
+        print(f"💚 HP: {hp}/{hpmax} ({hpPercent:.1f}%)")
+        return hpPercent > 80
     return False
 
 def amIinBeginners():
@@ -590,7 +654,7 @@ def moveInicioBegginers():
     global mouseAttackY
     
     print("Movendo inicio beginners...")
-    pyautogui.press('f7') #usar skill f7 (rapid glinding)
+    pyautogui.press(hotkeyRapidGlinding) #usar skill f7 (rapid glinding)
     time.sleep(0.5)
     pyautogui.keyDown('alt')
     pyautogui.rightClick(mouseAttackX + offset, mouseAttackY + offset)
@@ -602,13 +666,13 @@ def moveSouthEast():
     global mouseAttackX
     global mouseAttackY
     print("Movendo para o Sudeste...")
-    pyautogui.press('f7') #usar skill f7 (rapid glinding)
-    time.sleep(0.5)
+    pyautogui.press(hotkeyRapidGlinding) #usar skill f7 (rapid glinding)
+    time.sleep(0.2)
     pyautogui.keyDown('alt')
     pyautogui.rightClick(mouseAttackX + offset, mouseAttackY + offset)
-    time.sleep(0.5)  # Solta Alt quando para  
-    pyautogui.leftClick(mouseAttackX + (offset * 2), mouseAttackY + (offset * 2))
-    time.sleep(2)
+    time.sleep(0.2)  # Solta Alt quando para  
+    pyautogui.leftClick(mouseAttackX + offset, mouseAttackY + offset)
+    time.sleep(1.5)
     pyautogui.keyUp('alt')
 
 def moveNorthEast():
@@ -616,13 +680,13 @@ def moveNorthEast():
     global mouseAttackX
     global mouseAttackY
     print("Movendo para o Nordeste...")
-    pyautogui.press('f7') #usar skill f7 (rapid glinding)
-    time.sleep(0.5)
+    pyautogui.press(hotkeyRapidGlinding) #usar skill f7 (rapid glinding)
+    time.sleep(0.2)
     pyautogui.keyDown('alt')
     pyautogui.rightClick(mouseAttackX + offset, mouseAttackY - offset)
-    time.sleep(0.5)  # Solta Alt quando para  
-    pyautogui.leftClick(mouseAttackX + (offset * 2), mouseAttackY - (offset * 2))
-    time.sleep(2)
+    time.sleep(0.2)  # Solta Alt quando para  
+    pyautogui.leftClick(mouseAttackX + offset, mouseAttackY - offset)
+    time.sleep(1.5)
     pyautogui.keyUp('alt')
 
 def moveSouthWest():
@@ -630,13 +694,13 @@ def moveSouthWest():
     global mouseAttackX
     global mouseAttackY
     print("Movendo para o Sudoeste...")
-    pyautogui.press('f7') #usar skill f7 (rapid glinding)
-    time.sleep(0.5)
+    pyautogui.press(hotkeyRapidGlinding) #usar skill f7 (rapid glinding)
+    time.sleep(0.2)
     pyautogui.keyDown('alt')
     pyautogui.rightClick(mouseAttackX - offset, mouseAttackY + offset)
-    time.sleep(0.5)  # Solta Alt quando para  
-    pyautogui.leftClick(mouseAttackX - (offset * 2), mouseAttackY + (offset * 2))
-    time.sleep(2)
+    time.sleep(0.2)  # Solta Alt quando para  
+    pyautogui.leftClick(mouseAttackX - offset, mouseAttackY + offset)
+    time.sleep(1.5)
     pyautogui.keyUp('alt')
 
 def moveNorthWest():
@@ -644,13 +708,13 @@ def moveNorthWest():
     global mouseAttackX
     global mouseAttackY
     print("Movendo para o Noroeste...")
-    pyautogui.press('f7') #usar skill f7 (rapid glinding)
-    time.sleep(0.5)
+    pyautogui.press(hotkeyRapidGlinding) #usar skill f7 (rapid glinding)
+    time.sleep(0.2)
     pyautogui.keyDown('alt')
     pyautogui.rightClick(mouseAttackX  + offset, mouseAttackY - offset)
-    time.sleep(0.5)  # Solta Alt quando para  
-    pyautogui.leftClick(mouseAttackX + (offset * 2), mouseAttackY - (offset * 2))
-    time.sleep(2)
+    time.sleep(0.2)  # Solta Alt quando para  
+    pyautogui.leftClick(mouseAttackX  + offset, mouseAttackY - offset)
+    time.sleep(1.5)
     pyautogui.keyUp('alt')
 
 def moveRight():
@@ -658,13 +722,13 @@ def moveRight():
     global mouseAttackX
     global mouseAttackY
     print("Movendo para a direita...")
-    pyautogui.press('f7') #usar skill f7 (rapid glinding)
-    time.sleep(0.5)
+    pyautogui.press(hotkeyRapidGlinding) #usar skill f7 (rapid glinding)
+    time.sleep(0.2)
     pyautogui.keyDown('alt')
     pyautogui.rightClick(mouseAttackX + offset, mouseAttackY)
-    time.sleep(0.5)  
-    pyautogui.leftClick(mouseAttackX + (offset * 2), mouseAttackY)
-    time.sleep(2)
+    time.sleep(0.2)  
+    pyautogui.leftClick(mouseAttackX + offset, mouseAttackY)
+    time.sleep(1.5)
     pyautogui.keyUp('alt')
 
 def moveLeft():
@@ -672,13 +736,13 @@ def moveLeft():
     global mouseAttackX
     global mouseAttackY
     print("Movendo para a esquerda...")
-    pyautogui.press('f7') #usar skill f7 (rapid glinding)
-    time.sleep(0.5)
+    pyautogui.press(hotkeyRapidGlinding) #usar skill f7 (rapid glinding)
+    time.sleep(0.2)
     pyautogui.keyDown('alt')
     pyautogui.rightClick(mouseAttackX + offset, mouseAttackY)
-    time.sleep(0.5)  # Solta Alt quando para  
-    pyautogui.leftClick(mouseAttackX + (offset * 2), mouseAttackY)
-    time.sleep(2)
+    time.sleep(0.2)  # Solta Alt quando para  
+    pyautogui.leftClick(mouseAttackX + offset, mouseAttackY)
+    time.sleep(1.5)
     pyautogui.keyUp('alt')
     
 
@@ -687,26 +751,26 @@ def moveUp():
     global mouseAttackX
     global mouseAttackY
     print("Movendo para cima...")
-    pyautogui.press('f7') #usar skill f7 (rapid glinding)
-    time.sleep(0.5)
+    pyautogui.press(hotkeyRapidGlinding) #usar skill f7 (rapid glinding)
+    time.sleep(0.2)
     pyautogui.keyDown('alt')
     pyautogui.rightClick(mouseAttackX , mouseAttackY + offset)
-    time.sleep(0.5)  # Solta Alt quando para  
-    pyautogui.leftClick(mouseAttackX , mouseAttackY + (offset * 2))
-    time.sleep(2)
+    time.sleep(0.2)  # Solta Alt quando para  
+    pyautogui.leftClick(mouseAttackX , mouseAttackY + offset)
+    time.sleep(1.5)
     pyautogui.keyUp('alt')
 def moveDown():
     offset = 130
     global mouseAttackX
     global mouseAttackY
     print("Movendo para baixo...")
-    pyautogui.press('f7') #usar skill f7 (rapid glinding)
-    time.sleep(0.5)
+    pyautogui.press(hotkeyRapidGlinding) #usar skill f7 (rapid glinding)
+    time.sleep(0.2)
     pyautogui.keyDown('alt')
     pyautogui.rightClick(mouseAttackX , mouseAttackY + offset)
-    time.sleep(0.5)
-    pyautogui.leftClick(mouseAttackX , mouseAttackY + (offset * 2))
-    time.sleep(2)
+    time.sleep(0.2)
+    pyautogui.leftClick(mouseAttackX , mouseAttackY + offset)
+    time.sleep(1.5)
     pyautogui.keyUp('alt')  # Solta Alt quando para
 
 def printar_pos():
