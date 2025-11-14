@@ -401,29 +401,52 @@ def attack():
                 time.sleep(1)
                 pyautogui.keyUp('alt')
 
-    tempo_maximo = 25 # segundos
+    tempo_maximo = 25  # segundos
     tempo_inicio = time.time()
+    ultima_verificacao_monstro = time.time()  # ← NOVO: Controle de verificação
+    intervalo_verificacao = 3.0  # ← NOVO: Verificar a cada 3 segundos
+    
     print("Iniciando ataque por até " + str(tempo_maximo) + " segundos...")
     pyautogui.moveTo(mouseAttackX, mouseAttackY)
     pyautogui.keyDown('alt')  # Pressiona e mantém Alt no início
     
     while autoClickOn:
+        # Verificar checks (morte/Perona)
         if not checks():
             break
+        
         # Calcular tempo decorrido
         tempo_decorrido = time.time() - tempo_inicio
+        
         # Verificar se já passou o tempo máximo
         if tempo_decorrido >= tempo_maximo:
             print(f"⏱️ Tempo limite de {tempo_maximo}s atingido!")
             break
+        
+        # === VERIFICAR SE AINDA TEM MONSTROS A CADA 3 SEGUNDOS ===
+        tempo_desde_ultima_verificacao = time.time() - ultima_verificacao_monstro
+        
+        if tempo_desde_ultima_verificacao >= intervalo_verificacao:
+            print("🔍 Verificando presença de monstros...")
+            
+            # Verificar se tem monstro vermelho na região (65% de vermelho)
+            if not has_red_in_region(red_threshold=120, min_red_percentage=25.0):
+                print("❌ Nenhum monstro detectado! Parando ataque...")
+                break  # ← SAI do loop e retorna para quem chamou
+            else:
+                print("✅ Monstros ainda presentes. Continuando ataque...")
+            
+            # Atualizar timestamp da última verificação
+            ultima_verificacao_monstro = time.time()
 
+        # Executar ataque normal
         pyautogui.press(hotkeyNooseAndVenom)
-          
-        #pyautogui.mouseDown(button='right')
         pyautogui.click(button='right')  # Clica e solta automaticamente
         time.sleep(1)  # Small sleep to reduce CPU usage
     
     pyautogui.keyUp('alt')  # Solta Alt quando para
+   
+
 
 def init_bot():
     global autoClickOn
@@ -431,12 +454,13 @@ def init_bot():
     while autoClickOn:
         if autoClickOn and not isDead():
             checks()
-            attack()           
+            if has_red_in_region(red_threshold=120, min_red_percentage=20.0):
+                attack()  
+            else:
+                move()
         if autoClickOn and not isDead():
             lootGround2()
-        if autoClickOn and not isDead():    
-            checks()
-            move()
+2
             #Mephistopheles()
 
 def checks():
@@ -467,7 +491,7 @@ def Dead():
     time.sleep(6)
     pyautogui.keyUp('alt')
     time.sleep(1)
-    pyautogui.leftClick(264, 646)
+    pyautogui.leftClick(263, 667)
     time.sleep(3)
 
 def hold_right_click():

@@ -87,5 +87,13 @@ def isThereAreItem():
     return result
 
 
-time.sleep(4)
-isThereAreItem()
+# === EXECUTAR APENAS SE RODAR O ARQUIVO DIRETAMENTE ===
+if __name__ == "__main__":
+    print("="*60)
+    print("🔍 TESTE DE DETECÇÃO DE ITENS - Dark Eden")
+    print("="*60)
+    print("Aguardando 4 segundos para você posicionar a tela...")
+    time.sleep(4)
+    print("\n🎮 Iniciando detecção...")
+    isThereAreItem()
+    print("="*60)

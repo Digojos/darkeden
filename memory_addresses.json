@@ -1,12 +1,12 @@
 {
   "addresses": [
      {
-      "address_str": "0x1887E918",
+      "address_str": "0x185CDC38",
       "data_type": "int32",
       "description": "X"
     },
     {
-      "address_str": "0x1887E91C",
+      "address_str": "0x185CDC3C",
       "data_type": "int32",
       "description": "Y"
     },   
@@ -21,7 +21,7 @@
       "description": "HP"
     },
     {
-      "address_str": "0x21111C11",
+      "address_str": "0x11B8C4D1",
       "data_type": "string",
       "description": "Mapa"
     }

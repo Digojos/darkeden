@@ -3,8 +3,10 @@ import numpy as np
 from PIL import Image, ImageEnhance
 import time
 
-def has_red_in_region(red_threshold=120, min_red_percentage=0.5):
-    region = (383, 306, 234, 155)
+def has_red_in_region(red_threshold=120, min_red_percentage=20.0):
+    region = (335, 283, 361, 227)
+
+    
     """
     Detecta se existe cor vermelha em uma região da tela (monstros no Dark Eden)
     
@@ -58,7 +60,9 @@ def has_red_in_region(red_threshold=120, min_red_percentage=0.5):
     if has_red:
         print(f"   🔴 MONSTRO DETECTADO! ({red_percentage:.2f}% da região)" )
     else:
-        print(f"   ⚪ Área limpa (mínimo: {min_red_percentage}%)")
+        print(f"   ⚪ Área limpa (mínimo: {min_red_percentage}%) {red_percentage:.2f}%")
+
+    save_debug_image(region, "debug_monster_region.png")
     return has_red
 
 
@@ -137,12 +141,12 @@ def save_debug_image(region, filename="debug_monster.png"):
 def isThereMonster():
     """
     Detecta se existe monstro (vermelho) na região especificada
-    Região calibrada: (383, 306, 234, 155)
+    Região calibrada: (335, 283, 361, 227)
     """
-    region_monster = (383, 306, 234, 155)  # Região dos monstros
+    region_monster = (335, 283, 361, 227)  # Região dos monstros
     
     # Método 1: Simples (rápido, boa precisão)
-    result = has_red_in_region(red_threshold=120, min_red_percentage=0.5)
+    result = has_red_in_region(red_threshold=120, min_red_percentage=30.0)
     
     # Método 2: Avançado (mais sensível, melhor para monstros pequenos)
     # result = has_red_advanced(region_monster, red_min=100, red_dominance=40, min_percentage=0.3)
@@ -159,7 +163,7 @@ def isThereMonsterQuick():
     """
     Versão rápida sem prints (para uso em loops)
     """
-    region_monster = (383, 306, 234, 155)
+    region_monster = (335, 283, 361, 227)
     screenshot = pyautogui.screenshot(region=region_monster)
     
     enhancer = ImageEnhance.Color(screenshot)
@@ -190,8 +194,8 @@ if __name__ == "__main__":
     time.sleep(4)
     
     # Testar detecção
-    region_monster = (383, 306, 234, 155)
-    result_strict = has_red_in_region(red_threshold=120, min_red_percentage=65.0)
+    region_monster = (335, 283, 361, 227)
+    result_strict = has_red_in_region(red_threshold=120, min_red_percentage=30.0)
  
 
     save_debug_image(region_monster, "debug_monster_region.png")

@@ -1,0 +1,28 @@
+# Dependências do Dark Eden Bot (dk4.py)
+# Instalar com: pip install -r dk4-requirements.txt
+
+# === Automação de Teclado/Mouse ===
+keyboard==0.13.5
+pyautogui==0.9.54
+
+# === Processamento de Imagem ===
+Pillow==10.1.0
+numpy==1.24.3
+
+# === OCR (Reconhecimento de Texto) - para findItemDK.py ===
+pytesseract==0.3.10
+
+# === Manipulação de Memória - para read-memory.py ===
+psutil==5.9.6
+pymem==1.13.1
+
+# === Bibliotecas Padrão do Python (não precisam instalar) ===
+# - threading (built-in)
+# - time (built-in)
+# - os (built-in)
+# - sys (built-in)
+# - ctypes (built-in)
+# - struct (built-in)
+# - json (built-in)
+# - random (built-in)
+# - importlib (built-in)
