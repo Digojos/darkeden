@@ -53,7 +53,7 @@ hotkeyShowMemory = 'ctrl+alt+m'          # Mostrar valores de memória
 hotkeyToggleMonitoring = 'ctrl+alt+t'    # Ativar/Desativar monitoramento
 hotkeyDebugXY = 'ctrl+alt+d'             # Debug detalhado X/Y
 hotkeyReconnectProcess = 'ctrl+alt+r'    # Reconectar a outro processo
-
+timeattack = 40
 opcoes = [1, 2, 3, 4]
 bloodwalls = [0 , 25 , -25]
 franz = dict([("25,138","844,246"),("24,138","891,246")])
@@ -133,40 +133,40 @@ def move():
     opcoes_disponiveis = []
     
     # Verificar se pode ir para DIREITA (1)
-    if pos_x_ante is None or pos_x_ante <= 110:
+    if pos_x_ante is None or pos_x_ante <= 100:
         opcoes_disponiveis.append(1)
     else:
         print("⚠️ Limite direito atingido! X = " + str(pos_x_ante))
     
     # Verificar se pode ir para ESQUERDA (2)
-    if pos_x_ante is None or pos_x_ante >= 20:
+    if pos_x_ante is None or pos_x_ante >= 40:
         opcoes_disponiveis.append(2)
     else:
         print("⚠️ Limite esquerdo atingido! X = " + str(pos_x_ante))
     
     # Verificar se pode ir para CIMA (3)
-    if pos_y_ante is None or pos_y_ante >= 20:
+    if pos_y_ante is None or pos_y_ante >= 40:
         opcoes_disponiveis.append(3)
     else:
         print("⚠️ Limite superior atingido! Y = " + str(pos_y_ante))
     
     # Verificar se pode ir para BAIXO (4)
-    if pos_y_ante is None or pos_y_ante <= 230:
+    if pos_y_ante is None or pos_y_ante <= 210:
         opcoes_disponiveis.append(4)
     else:
         print("⚠️ Limite inferior atingido! Y = " + str(pos_y_ante))
         # Diagonais
     # Noroeste (esquerda + cima)
-    if (pos_x_ante is None or pos_x_ante >= 20) and (pos_y_ante is None or pos_y_ante >= 20):
+    if (pos_x_ante is None or pos_x_ante >= 40) and (pos_y_ante is None or pos_y_ante >= 40):
         opcoes_disponiveis.append(5)
     # Sudoeste (esquerda + baixo)
-    if (pos_x_ante is None or pos_x_ante >= 20) and (pos_y_ante is None or pos_y_ante <= 230):
+    if (pos_x_ante is None or pos_x_ante >= 40) and (pos_y_ante is None or pos_y_ante <= 210):
         opcoes_disponiveis.append(6)
     # Sudeste (direita + baixo)
-    if (pos_x_ante is None or pos_x_ante <= 110) and (pos_y_ante is None or pos_y_ante <= 230):
+    if (pos_x_ante is None or pos_x_ante <= 100) and (pos_y_ante is None or pos_y_ante <= 210):
         opcoes_disponiveis.append(7)
     # Nordeste (direita + cima)
-    if (pos_x_ante is None or pos_x_ante <= 110) and (pos_y_ante is None or pos_y_ante >= 20):
+    if (pos_x_ante is None or pos_x_ante <= 100) and (pos_y_ante is None or pos_y_ante >= 40):
         opcoes_disponiveis.append(8)
         
     # Se não houver opções disponíveis, não mover
